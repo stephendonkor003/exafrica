@@ -27,12 +27,14 @@ class RoleAndPhaseSeeder extends Seeder
             Role::firstOrCreate(['slug' => $role['slug']], $role);
         }
 
-        $admin = User::firstOrCreate(
-            ['email' => 'admin@example.com'],
+        $superAdminRoleId = Role::where('slug', 'super_admin')->value('id');
+
+        $admin = User::updateOrCreate(
+            ['email' => 'donkors@africanunion.org'],
             [
-                'name' => 'Admin User',
-                'password' => Hash::make('password'),
-                'role_id' => Role::where('slug', 'super_admin')->value('id'),
+                'name' => 'Donkors Admin',
+                'password' => Hash::make('Amodon@2063'),
+                'role_id' => $superAdminRoleId,
                 'is_active' => true,
             ]
         );

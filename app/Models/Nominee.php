@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Nominee extends Model
 {
     protected $fillable = [
-        'full_name', 'bio', 'email', 'phone', 'profile_image',
+        'full_name', 'bio', 'email', 'phone', 'country', 'profile_image',
         'category_id', 'status', 'vote_count', 'rejection_reason'
     ];
 

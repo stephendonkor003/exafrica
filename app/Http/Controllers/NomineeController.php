@@ -5,18 +5,22 @@ namespace App\Http\Controllers;
 use App\Models\Nominee;
 use App\Models\Category;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class NomineeController extends BaseController
 {
     public function index(Request $request)
     {
         $query = Nominee::with('category');
+        $canManageNominees = in_array($request->user()?->role?->slug, ['super_admin', 'evaluator'], true);
 
         if ($request->category_id) {
             $query->where('category_id', $request->category_id);
         }
 
-        if ($request->status) {
+        if (! $canManageNominees) {
+            $query->where('status', 'published');
+        } elseif ($request->status) {
             $query->where('status', $request->status);
         }
 
@@ -24,8 +28,14 @@ class NomineeController extends BaseController
         return $this->paginatedResponse($nominees, 'Nominees retrieved successfully');
     }
 
-    public function show(Nominee $nominee)
+    public function show(Request $request, Nominee $nominee)
     {
+        $canManageNominees = in_array($request->user()?->role?->slug, ['super_admin', 'evaluator'], true);
+
+        if (! $canManageNominees && $nominee->status !== 'published') {
+            return $this->errorResponse('You do not have permission to access this resource', null, 403);
+        }
+
         return $this->successResponse($nominee->load('category', 'votes'), 'Nominee retrieved successfully');
     }
 
@@ -36,6 +46,7 @@ class NomineeController extends BaseController
             'bio' => 'nullable|string',
             'email' => 'nullable|email',
             'phone' => 'nullable|string',
+            'country' => ['nullable', 'string', Rule::in($this->africanCountryNames())],
             'profile_image' => 'nullable|url',
             'category_id' => 'required|exists:categories,id',
         ]);
@@ -45,6 +56,7 @@ class NomineeController extends BaseController
             'bio' => $request->bio,
             'email' => $request->email,
             'phone' => $request->phone,
+            'country' => $request->country,
             'profile_image' => $request->profile_image,
             'category_id' => $request->category_id,
             'status' => 'pending',
@@ -60,12 +72,18 @@ class NomineeController extends BaseController
             'bio' => 'nullable|string',
             'email' => 'nullable|email',
             'phone' => 'nullable|string',
+            'country' => ['nullable', 'string', Rule::in($this->africanCountryNames())],
             'profile_image' => 'nullable|url',
         ]);
 
-        $nominee->update($request->only(['full_name', 'bio', 'email', 'phone', 'profile_image']));
+        $nominee->update($request->only(['full_name', 'bio', 'email', 'phone', 'country', 'profile_image']));
 
         return $this->successResponse($nominee->load('category'), 'Nominee updated successfully');
+    }
+
+    private function africanCountryNames(): array
+    {
+        return array_column(config('african_countries', []), 'name');
     }
 
     public function destroy(Nominee $nominee)

@@ -37,8 +37,8 @@ Route::prefix('v1')->group(function () {
         // Nominees
         Route::get('nominees', [NomineeController::class, 'index']);
         Route::get('nominees/{nominee}', [NomineeController::class, 'show']);
-        Route::post('nominees', [NomineeController::class, 'store']);
         Route::middleware('role:super_admin,evaluator')->group(function () {
+            Route::post('nominees', [NomineeController::class, 'store']);
             Route::put('nominees/{nominee}', [NomineeController::class, 'update']);
             Route::delete('nominees/{nominee}', [NomineeController::class, 'destroy']);
             Route::post('nominees/{nominee}/approve', [NomineeController::class, 'approve']);
@@ -47,9 +47,9 @@ Route::prefix('v1')->group(function () {
         });
 
         // Nominations
-        Route::get('nominations', [NominationController::class, 'index']);
         Route::post('nominations', [NominationController::class, 'store']);
         Route::middleware('role:super_admin,evaluator')->group(function () {
+            Route::get('nominations', [NominationController::class, 'index']);
             Route::put('nominations/{nomination}', [NominationController::class, 'update']);
             Route::post('nominations/{nomination}/evaluate', [NominationController::class, 'evaluate']);
             Route::post('nominations/{nomination}/approve', [NominationController::class, 'approve']);
@@ -76,9 +76,9 @@ Route::prefix('v1')->group(function () {
         });
 
         // Voting Phases
-        Route::get('voting-phases', [VotingPhaseController::class, 'index']);
         Route::get('voting-phases/current', [VotingPhaseController::class, 'getCurrentPhase']);
         Route::middleware('role:super_admin')->group(function () {
+            Route::get('voting-phases', [VotingPhaseController::class, 'index']);
             Route::post('voting-phases', [VotingPhaseController::class, 'store']);
             Route::put('voting-phases/{phase}', [VotingPhaseController::class, 'update']);
             Route::delete('voting-phases/{phase}', [VotingPhaseController::class, 'destroy']);

@@ -7,7 +7,7 @@
     <h1 class="section-title">Account</h1>
     <div class="app-panel">
         <div>
-            <h2 class="section-subtitle">Sign in or create an account</h2>
+            <h2 class="section-subtitle">Create an account</h2>
             <p class="panel-copy">A voter account is required so nominations and votes can be saved securely in the database.</p>
             <div class="auth-status" id="authStatus">Checking account status...</div>
         </div>
@@ -17,6 +17,22 @@
     </div>
 
     <div class="auth-grid">
+        <form class="nomination-form app-form" id="loginForm">
+            <h2 class="section-subtitle">Sign In</h2>
+            <div class="form-group full-width">
+                <label>Email *</label>
+                <input name="email" type="email" required placeholder="you@example.com">
+            </div>
+            <div class="form-group full-width">
+                <label>Password *</label>
+                <input name="password" type="password" required minlength="6" placeholder="Your password">
+            </div>
+            <div class="form-submit">
+                <button type="submit" class="btn-submit">Sign In</button>
+            </div>
+            <div class="form-message" id="loginMessage"></div>
+        </form>
+
         <form class="nomination-form app-form" id="registerForm">
             <h2 class="section-subtitle">Create Account</h2>
             <div class="form-group full-width">
@@ -42,138 +58,6 @@
             </div>
             <div class="form-message" id="registerMessage"></div>
         </form>
-
-        <form class="nomination-form app-form" id="loginForm">
-            <h2 class="section-subtitle">Sign In</h2>
-            <div class="form-group full-width">
-                <label>Email *</label>
-                <input name="email" type="email" required placeholder="you@example.com">
-            </div>
-            <div class="form-group full-width">
-                <label>Password *</label>
-                <input name="password" type="password" required placeholder="Your password">
-            </div>
-            <div class="form-submit">
-                <button type="submit" class="btn-submit">Sign In</button>
-            </div>
-            <div class="form-message" id="loginMessage"></div>
-        </form>
-    </div>
-</div>
-
-<!-- BACK OFFICE SECTION -->
-<div class="section-content" id="section-backoffice" style="display:none;">
-    <h1 class="section-title">Back Office</h1>
-    <div class="app-panel">
-        <div>
-            <h2 class="section-subtitle">Operations Dashboard</h2>
-            <p class="panel-copy">Manage nominations, nominees, categories, voting phases, users, and voting performance from one workspace.</p>
-            <div class="auth-status compact" id="backofficeAuthStatus"></div>
-        </div>
-        <button type="button" class="btn-submit" id="backofficeRefreshBtn">Refresh Back Office</button>
-    </div>
-
-    <div class="metric-grid" id="adminMetricGrid"></div>
-
-    <div class="backoffice-tabs" role="tablist">
-        <button type="button" class="bo-tab active" data-bo-tab="nominations">Nominations</button>
-        <button type="button" class="bo-tab" data-bo-tab="nominees">Nominees</button>
-        <button type="button" class="bo-tab" data-bo-tab="categories">Categories</button>
-        <button type="button" class="bo-tab" data-bo-tab="phases">Phases</button>
-        <button type="button" class="bo-tab" data-bo-tab="users">Users</button>
-    </div>
-
-    <div class="bo-panel active" id="bo-panel-nominations">
-        <div class="bo-panel-head">
-            <h2 class="section-subtitle">Nomination Review</h2>
-            <select id="boNominationStatus">
-                <option value="">All statuses</option>
-                <option value="pending">Pending</option>
-                <option value="approved">Approved</option>
-                <option value="rejected">Rejected</option>
-            </select>
-        </div>
-        <div class="table-wrap">
-            <table class="bo-table">
-                <thead><tr><th>Nominee</th><th>Category</th><th>Status</th><th>Reason</th><th>Actions</th></tr></thead>
-                <tbody id="boNominationsBody"><tr><td colspan="5">Load back office data to begin.</td></tr></tbody>
-            </table>
-        </div>
-    </div>
-
-    <div class="bo-panel" id="bo-panel-nominees">
-        <div class="bo-panel-head">
-            <h2 class="section-subtitle">Nominee Publishing</h2>
-            <select id="boNomineeStatus">
-                <option value="">All statuses</option>
-                <option value="pending">Pending</option>
-                <option value="approved">Approved</option>
-                <option value="rejected">Rejected</option>
-                <option value="published">Published</option>
-            </select>
-        </div>
-        <div class="table-wrap">
-            <table class="bo-table">
-                <thead><tr><th>Name</th><th>Category</th><th>Status</th><th>Votes</th><th>Actions</th></tr></thead>
-                <tbody id="boNomineesBody"><tr><td colspan="5">Load back office data to begin.</td></tr></tbody>
-            </table>
-        </div>
-    </div>
-
-    <div class="bo-panel" id="bo-panel-categories">
-        <h2 class="section-subtitle">Category Management</h2>
-        <form class="nomination-form compact-form" id="boCategoryForm">
-            <input type="hidden" name="id">
-            <div class="form-row">
-                <div class="form-group"><label>Name *</label><input name="name" required type="text" placeholder="Category name"></div>
-                <div class="form-group"><label>Position</label><input name="position" type="number" min="0" placeholder="0"></div>
-            </div>
-            <div class="form-row">
-                <div class="form-group"><label>Max Nominees</label><input name="max_nominees" type="number" min="1" placeholder="10"></div>
-                <div class="form-group"><label>Icon</label><input name="icon" type="text" placeholder="fa-star"></div>
-            </div>
-            <div class="form-group full-width"><label>Description</label><textarea name="description" rows="2" placeholder="Category description"></textarea></div>
-            <div class="form-submit"><button type="submit" class="btn-submit">Save Category</button></div>
-            <div class="form-message" id="boCategoryMessage"></div>
-        </form>
-        <div class="table-wrap">
-            <table class="bo-table">
-                <thead><tr><th>Name</th><th>Position</th><th>Active</th><th>Actions</th></tr></thead>
-                <tbody id="boCategoriesBody"><tr><td colspan="4">Load back office data to begin.</td></tr></tbody>
-            </table>
-        </div>
-    </div>
-
-    <div class="bo-panel" id="bo-panel-phases">
-        <h2 class="section-subtitle">Voting Phases</h2>
-        <div class="table-wrap">
-            <table class="bo-table">
-                <thead><tr><th>Name</th><th>Type</th><th>Dates</th><th>Active</th><th>Actions</th></tr></thead>
-                <tbody id="boPhasesBody"><tr><td colspan="5">Load back office data to begin.</td></tr></tbody>
-            </table>
-        </div>
-    </div>
-
-    <div class="bo-panel" id="bo-panel-users">
-        <h2 class="section-subtitle">User Management</h2>
-        <form class="nomination-form compact-form" id="boUserForm">
-            <div class="form-row">
-                <div class="form-group"><label>Name *</label><input name="name" required type="text" placeholder="Full name"></div>
-                <div class="form-group"><label>Email *</label><input name="email" required type="email" placeholder="user@example.com"></div>
-            </div>
-            <div class="form-row">
-                <div class="form-group"><label>Password *</label><input name="password" required type="password" minlength="8" placeholder="Minimum 8 characters"></div>
-                <div class="form-group"><label>Role *</label><select name="role_id" id="boUserRole" required><option value="">Load roles first</option></select></div>
-            </div>
-            <div class="form-submit"><button type="submit" class="btn-submit">Create User</button></div>
-            <div class="form-message" id="boUserMessage"></div>
-        </form>
-        <div class="table-wrap">
-            <table class="bo-table">
-                <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Active</th><th>Actions</th></tr></thead>
-                <tbody id="boUsersBody"><tr><td colspan="5">Load back office data to begin.</td></tr></tbody>
-            </table>
-        </div>
     </div>
 </div>
 
@@ -450,7 +334,7 @@
     <div class="nomination-form-wrapper">
         <h2 class="section-subtitle">Submit a Nomination</h2>
         <div class="auth-status compact" id="nominationAuthStatus"></div>
-        <form class="nomination-form" id="nominationForm">
+        <form class="nomination-form" id="nominationForm" enctype="multipart/form-data">
             <div class="form-row">
                 <div class="form-group">
                     <label>Nominee's Full Name *</label>
@@ -469,9 +353,18 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Phone</label>
-                    <input name="phone" type="text" placeholder="Phone or WhatsApp">
+                    <label>Country *</label>
+                    <select name="country" id="nomineeCountry" required>
+                        <option value="">Select African country</option>
+                        @foreach (config('african_countries') as $country)
+                            <option value="{{ $country['name'] }}">{{ $country['flag'] }} {{ $country['name'] }}</option>
+                        @endforeach
+                    </select>
                 </div>
+            </div>
+            <div class="form-group full-width">
+                <label>Phone</label>
+                <input name="phone" type="text" placeholder="Phone or WhatsApp">
             </div>
             <div class="form-group full-width">
                 <label>Short Bio</label>
@@ -482,8 +375,21 @@
                 <textarea name="nomination_reason" rows="5" required placeholder="Describe the nominee's extraordinary contributions..."></textarea>
             </div>
             <div class="form-group full-width">
-                <label>Profile Image URL</label>
-                <input name="profile_image" type="url" placeholder="https://example.com/photo.jpg">
+                <label>Nominee Profile Picture *</label>
+                <input name="profile_image_file" type="file" accept="image/*" required>
+                <span class="form-help">Upload a clear JPG, PNG, WEBP, or similar image of the nominee.</span>
+            </div>
+            <div class="evidence-box">
+                <div class="form-group full-width">
+                    <label>Achievement Documents</label>
+                    <input name="achievement_documents[]" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp" multiple>
+                    <span class="form-help">Upload up to 5 documents or images showing the nominee's achievements.</span>
+                </div>
+                <div class="form-group full-width">
+                    <label>Achievement Links</label>
+                    <textarea name="achievement_links" rows="3" placeholder="Paste website, article, video, or social media links. Put each link on a new line."></textarea>
+                    <span class="form-help">Provide documents, links, or both. At least one evidence item is required.</span>
+                </div>
             </div>
             <div class="form-submit">
                 <button type="submit" class="btn-submit">Submit Nomination</button>
@@ -533,11 +439,11 @@
                  data-modal-number="1"
                  data-modal-title="Call for Nominations"
                  data-modal-text="The competition opens for nominations across all nine categories. Nominators and self-nominees can submit entries through the official portal."
-                 data-modal-date="January – March 2024">
+                 data-modal-date="January – March 2026">
                 <span class="timeline-phase">Phase 1</span>
                 <h3>Call for Nominations</h3>
                 <p>The competition opens for nominations across all nine categories. Nominators and self-nominees can submit entries through the official portal.</p>
-                <span class="timeline-tag">January – March 2024</span>
+                <span class="timeline-tag">January – March 2026</span>
             </div>
         </div>
         <div class="timeline-item right">
@@ -549,11 +455,11 @@
                  data-modal-number="2"
                  data-modal-title="Screening and Verification"
                  data-modal-text="All nominations are screened for eligibility and verified against the competition criteria. Incomplete submissions are flagged for review."
-                 data-modal-date="April 2024">
+                 data-modal-date="April 2026">
                 <span class="timeline-phase">Phase 2</span>
                 <h3>Screening and Verification</h3>
                 <p>All nominations are screened for eligibility and verified against the competition criteria. Incomplete submissions are flagged for review.</p>
-                <span class="timeline-tag">April 2024</span>
+                <span class="timeline-tag">April 2026</span>
             </div>
         </div>
         <div class="timeline-item left">
@@ -565,11 +471,11 @@
                  data-modal-number="3"
                  data-modal-title="Judging Panel Review"
                  data-modal-text="A distinguished panel of judges evaluate all verified nominations. Each nomination is assessed on impact, innovation, scalability, and alignment with Agenda 2063."
-                 data-modal-date="May – June 2024">
+                 data-modal-date="May – June 2026">
                 <span class="timeline-phase">Phase 3</span>
                 <h3>Judging Panel Review</h3>
                 <p>A distinguished panel of judges evaluate all verified nominations. Each nomination is assessed on impact, innovation, scalability, and alignment with Agenda 2063.</p>
-                <span class="timeline-tag">May – June 2024</span>
+                <span class="timeline-tag">May – June 2026</span>
             </div>
         </div>
         <div class="timeline-item right">
@@ -581,11 +487,11 @@
                  data-modal-number="4"
                  data-modal-title="Shortlisting"
                  data-modal-text="Top nominees in each category are shortlisted and notified. Shortlisted nominees are featured on the competition website and social media channels."
-                 data-modal-date="July 2024">
+                 data-modal-date="July 2026">
                 <span class="timeline-phase">Phase 4</span>
                 <h3>Shortlisting</h3>
                 <p>Top nominees in each category are shortlisted and notified. Shortlisted nominees are featured on the competition website and social media channels.</p>
-                <span class="timeline-tag">July 2024</span>
+                <span class="timeline-tag">July 2026</span>
             </div>
         </div>
         <div class="timeline-item left">
@@ -597,11 +503,11 @@
                  data-modal-number="5"
                  data-modal-title="Public Voting"
                  data-modal-text="The public is invited to vote for their favourite nominees. Public voting forms part of the overall scoring mechanism and gives the community a voice in celebrating Africa's brightest."
-                 data-modal-date="August 2024">
+                 data-modal-date="August 2026">
                 <span class="timeline-phase">Phase 5</span>
                 <h3>Public Voting</h3>
                 <p>The public is invited to vote for their favourite nominees. Public voting forms part of the overall scoring mechanism.</p>
-                <span class="timeline-tag">August 2024</span>
+                <span class="timeline-tag">August 2026</span>
             </div>
         </div>
         <div class="timeline-item right">
@@ -613,11 +519,11 @@
                  data-modal-number="6"
                  data-modal-title="Awards Ceremony"
                  data-modal-text="Winners are announced and celebrated at a prestigious awards ceremony attended by African leaders, innovators, and changemakers. A night of recognition, inspiration, and continental pride."
-                 data-modal-date="September 2024">
+                 data-modal-date="September 2026">
                 <span class="timeline-phase">Phase 6</span>
                 <h3>Awards Ceremony</h3>
                 <p>Winners are announced and celebrated at a prestigious awards ceremony attended by African leaders, innovators, and changemakers.</p>
-                <span class="timeline-tag">September 2024</span>
+                <span class="timeline-tag">September 2026</span>
             </div>
         </div>
     </div>

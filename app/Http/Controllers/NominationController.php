@@ -2,15 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use App\Models\Nomination;
 use App\Models\Nominee;
-use App\Models\Category;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class NominationController extends BaseController
 {
+    private const DEVICE_ALREADY_NOMINATED_MESSAGE = 'This device has already been used to nominate someone already';
+
     public function index(Request $request)
     {
         $query = Nomination::with('nominee', 'category', 'nominatedBy', 'evaluatedBy');
@@ -24,74 +29,264 @@ class NominationController extends BaseController
         }
 
         $nominations = $query->paginate(20);
+
         return $this->paginatedResponse($nominations, 'Nominations retrieved successfully');
     }
 
     public function store(Request $request)
     {
+        $achievementLinks = $this->normalizedAchievementLinks($request);
+        $hasAchievementDocuments = $this->hasUploadedAchievementDocuments($request);
+        $africanCountries = $this->africanCountryNames();
+        $request->merge(['achievement_links' => $achievementLinks]);
+
         $request->validate([
             'nominee_id' => 'nullable|exists:nominees,id|required_without:full_name',
             'full_name' => 'nullable|string|max:255|required_without:nominee_id',
             'bio' => 'nullable|string',
             'email' => 'nullable|email',
             'phone' => 'nullable|string',
+            'country' => [
+                Rule::requiredIf(fn () => $request->filled('full_name') && ! $request->filled('nominee_id')),
+                'nullable',
+                'string',
+                Rule::in($africanCountries),
+            ],
             'profile_image' => 'nullable|url',
+            'profile_image_file' => [
+                Rule::requiredIf(fn () => $request->filled('full_name')
+                    && ! $request->filled('profile_image')
+                    && ! $request->hasFile('profile_image_file')),
+                'image',
+                'max:5120',
+            ],
             'category_id' => [
                 'required',
                 Rule::exists('categories', 'id')->where('is_active', true),
             ],
             'nomination_reason' => 'required|string',
+            'achievement_documents' => 'nullable|array|max:5',
+            'achievement_documents.*' => 'file|mimes:pdf,doc,docx,jpg,jpeg,png,webp|max:10240',
+            'achievement_links' => 'nullable|array|max:5',
+            'achievement_links.*' => 'nullable|url|max:2048',
+            'device_fingerprint' => 'nullable|string|max:1000',
         ]);
 
-        $category = Category::findOrFail($request->category_id);
-
-        $nomination = DB::transaction(function () use ($request, $category) {
-            $nominee = $request->nominee_id
-                ? Nominee::lockForUpdate()->findOrFail($request->nominee_id)
-                : Nominee::create([
-                    'full_name' => $request->full_name,
-                    'bio' => $request->bio,
-                    'email' => $request->email,
-                    'phone' => $request->phone,
-                    'profile_image' => $request->profile_image,
-                    'category_id' => $category->id,
-                    'status' => 'pending',
-                ]);
-
-            if ((int) $nominee->category_id !== (int) $category->id) {
-                abort(response()->json([
-                    'success' => false,
-                    'message' => 'Nominee does not belong to the selected category',
-                    'errors' => null,
-                ], 422));
-            }
-
-            $existingNomination = Nomination::where('nominee_id', $nominee->id)
-                ->where('category_id', $category->id)
-                ->first();
-
-            if ($existingNomination) {
-                abort(response()->json([
-                    'success' => false,
-                    'message' => 'This nominee has already been nominated in this category',
-                    'errors' => null,
-                ], 409));
-            }
-
-            return Nomination::create([
-                'nominee_id' => $nominee->id,
-                'category_id' => $category->id,
-                'nominated_by' => auth()->id(),
-                'nomination_reason' => $request->nomination_reason,
-                'evaluation_status' => 'pending',
+        if (! $hasAchievementDocuments && empty($achievementLinks)) {
+            throw ValidationException::withMessages([
+                'achievement_evidence' => 'Please upload at least one achievement document or provide at least one achievement link.',
             ]);
-        });
+        }
+
+        $nominator = $request->user();
+
+        if (! $nominator) {
+            return $this->errorResponse('Unauthenticated', null, 401);
+        }
+
+        $nominatorIp = $request->ip();
+        $deviceHash = $this->makeDeviceHash($request);
+        $userAgent = (string) $request->userAgent();
+
+        if (Nomination::where('nominated_by', $nominator->id)->exists()) {
+            return $this->errorResponse('You have already submitted a nomination', null, 409);
+        }
+
+        if ($this->deviceHasAlreadyNominated($nominatorIp, $deviceHash)) {
+            return $this->errorResponse(self::DEVICE_ALREADY_NOMINATED_MESSAGE, null, 409);
+        }
+
+        $category = Category::findOrFail($request->category_id);
+        $profileImage = $this->storeProfileImage($request);
+        $achievementDocuments = $this->storeAchievementDocuments($request);
+
+        try {
+            $nomination = DB::transaction(function () use ($request, $category, $nominator, $nominatorIp, $deviceHash, $userAgent, $profileImage, $achievementDocuments, $achievementLinks) {
+                $nominee = $request->nominee_id
+                    ? Nominee::lockForUpdate()->findOrFail($request->nominee_id)
+                    : Nominee::create([
+                        'full_name' => $request->full_name,
+                        'bio' => $request->bio,
+                        'email' => $request->email,
+                        'phone' => $request->phone,
+                        'country' => $request->country,
+                        'profile_image' => $profileImage ?: $request->profile_image,
+                        'category_id' => $category->id,
+                        'status' => 'pending',
+                    ]);
+
+                if ($request->filled('email') && blank($nominee->email)) {
+                    $nominee->update(['email' => $request->email]);
+                }
+
+                if ($profileImage && blank($nominee->profile_image)) {
+                    $nominee->update(['profile_image' => $profileImage]);
+                }
+
+                if ($request->filled('country') && blank($nominee->country)) {
+                    $nominee->update(['country' => $request->country]);
+                }
+
+                if ((int) $nominee->category_id !== (int) $category->id) {
+                    abort(response()->json([
+                        'success' => false,
+                        'message' => 'Nominee does not belong to the selected category',
+                        'errors' => null,
+                    ], 422));
+                }
+
+                if (Nomination::where('nominated_by', $nominator->id)->exists()) {
+                    abort(response()->json([
+                        'success' => false,
+                        'message' => 'You have already submitted a nomination',
+                        'errors' => null,
+                    ], 409));
+                }
+
+                if ($this->deviceHasAlreadyNominated($nominatorIp, $deviceHash)) {
+                    abort(response()->json([
+                        'success' => false,
+                        'message' => self::DEVICE_ALREADY_NOMINATED_MESSAGE,
+                        'errors' => null,
+                    ], 409));
+                }
+
+                $existingNomination = Nomination::where('nominee_id', $nominee->id)
+                    ->where('category_id', $category->id)
+                    ->first();
+
+                if ($existingNomination) {
+                    abort(response()->json([
+                        'success' => false,
+                        'message' => 'This nominee has already been nominated in this category',
+                        'errors' => null,
+                    ], 409));
+                }
+
+                return Nomination::create([
+                    'nominee_id' => $nominee->id,
+                    'category_id' => $category->id,
+                    'nominated_by' => $nominator->id,
+                    'nominator_ip' => $nominatorIp,
+                    'nominator_device_hash' => $deviceHash,
+                    'nominator_user_agent' => blank($userAgent) ? null : $userAgent,
+                    'nomination_reason' => $request->nomination_reason,
+                    'achievement_documents' => $achievementDocuments,
+                    'achievement_links' => $achievementLinks,
+                    'evaluation_status' => 'pending',
+                ]);
+            });
+        } catch (QueryException $exception) {
+            if (in_array($exception->getCode(), ['23000', '23505'], true)) {
+                return $this->errorResponse($this->duplicateMessageFromQueryException($exception), null, 409);
+            }
+
+            throw $exception;
+        }
+
+        $nomination->load('nominee', 'category', 'nominatedBy');
 
         return $this->successResponse(
-            $nomination->load('nominee', 'category', 'nominatedBy'),
+            $nomination,
             'Nomination created successfully',
             201
         );
+    }
+
+    private function africanCountryNames(): array
+    {
+        return array_column(config('african_countries', []), 'name');
+    }
+
+    private function normalizedAchievementLinks(Request $request): array
+    {
+        $links = $request->input('achievement_links', []);
+
+        if (is_string($links)) {
+            $links = preg_split('/\r\n|\r|\n|,/', $links) ?: [];
+        }
+
+        return collect((array) $links)
+            ->map(fn ($link) => trim((string) $link))
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    private function hasUploadedAchievementDocuments(Request $request): bool
+    {
+        return collect((array) $request->file('achievement_documents', []))
+            ->filter()
+            ->isNotEmpty();
+    }
+
+    private function storeProfileImage(Request $request): ?string
+    {
+        if (! $request->hasFile('profile_image_file')) {
+            return null;
+        }
+
+        $path = $request->file('profile_image_file')->store('nominees/profile-images', 'public');
+
+        return $this->publicStorageUrl($path);
+    }
+
+    private function storeAchievementDocuments(Request $request): array
+    {
+        return collect((array) $request->file('achievement_documents', []))
+            ->filter()
+            ->map(function ($file) {
+                $path = $file->store('nominations/achievement-documents', 'public');
+
+                return [
+                    'name' => $file->getClientOriginalName(),
+                    'path' => $path,
+                    'url' => $this->publicStorageUrl($path),
+                    'mime_type' => $file->getClientMimeType(),
+                    'size' => $file->getSize(),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    private function publicStorageUrl(string $path): string
+    {
+        return '/storage/'.ltrim($path, '/');
+    }
+
+    private function makeDeviceHash(Request $request): string
+    {
+        return hash('sha256', implode('|', [
+            $request->ip() ?: 'unknown-ip',
+            (string) $request->userAgent(),
+            (string) $request->input('device_fingerprint', ''),
+        ]));
+    }
+
+    private function deviceHasAlreadyNominated(?string $ipAddress, string $deviceHash): bool
+    {
+        return Nomination::where(function ($query) use ($ipAddress, $deviceHash) {
+            $query->where('nominator_device_hash', $deviceHash);
+
+            if (filled($ipAddress)) {
+                $query->orWhere('nominator_ip', $ipAddress);
+            }
+        })->exists();
+    }
+
+    private function duplicateMessageFromQueryException(QueryException $exception): string
+    {
+        $databaseMessage = strtolower($exception->getMessage().' '.implode(' ', array_map('strval', $exception->errorInfo ?? [])));
+
+        if (str_contains($databaseMessage, 'nominator_ip')
+            || str_contains($databaseMessage, 'nominator_device_hash')
+            || str_contains($databaseMessage, 'nominations_nominator_ip_unique')
+            || str_contains($databaseMessage, 'nominations_nominator_device_hash_unique')) {
+            return self::DEVICE_ALREADY_NOMINATED_MESSAGE;
+        }
+
+        return 'You have already submitted a nomination';
     }
 
     public function update(Request $request, Nomination $nomination)

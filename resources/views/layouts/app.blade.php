@@ -26,18 +26,23 @@
         </div>
         
         <div class="header-right">
-            <button class="search-btn" id="searchToggle" aria-label="Search">
+            <button class="search-btn" id="searchToggle" type="button" aria-label="Search">
                 <i class="fa fa-search"></i>
             </button>
-            <div class="search-bar" id="searchBar">
-                <input type="text" placeholder="Search...">
-                <button><i class="fa fa-search"></i></button>
+            <div class="search-bar" id="searchBar" role="search">
+                <input id="siteSearchInput" type="search" placeholder="Search pages..." autocomplete="off" aria-label="Search pages" aria-controls="siteSearchResults" aria-expanded="false">
+                <button id="siteSearchSubmit" type="button" aria-label="Run search"><i class="fa fa-search"></i></button>
             </div>
+            <div class="search-results" id="siteSearchResults" role="listbox" aria-live="polite"></div>
         </div>
     </header>
 
     <!-- Hero Section (only on home) -->
     <section class="hero-section" id="heroSection">
+        <video class="hero-video" autoplay muted loop playsinline preload="auto" aria-label="Citizens Talk logo reveal">
+            <source src="{{ asset('videos/citizens-talk-logo-reveal-4k.mp4') }}" type="video/mp4">
+        </video>
+        <div class="hero-overlay" aria-hidden="true"></div>
         <div class="hero-content">
             <div class="hero-text">
                 <ul>
@@ -46,22 +51,6 @@
                 <p>A Global Stage for Creativity, Innovation, and Excellence - Submit Your Entry Today!</p>
                 <a href="#" class="btn-apply" onclick="showSection('nominations'); return false;">Apply now</a>
             </div>
-            <div class="hero-logo">
-                <div class="ea-logo">
-                    <div class="ea-text">
-                        <span class="extra">EXTRA</span>
-                        <span class="ordinary">ORDINARY</span>
-                        <span class="african">AFRICAN</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="hero-shapes">
-            <div class="shape circle-blue"></div>
-            <div class="shape circle-yellow"></div>
-            <div class="shape circle-pink"></div>
-            <div class="shape triangle"></div>
-            <div class="shape dots-ring"></div>
         </div>
     </section>
 
@@ -74,7 +63,6 @@
                 <ul>
                     <li><a href="#" class="nav-link nav-home" id="homeLink">Home <span class="arrow"><i class="fa fa-house"></i></span></a></li>
                     <li><a href="#" class="nav-link" data-section="account">Account <span class="arrow"><i class="fa fa-user"></i></span></a></li>
-                    <li><a href="#" class="nav-link" data-section="backoffice">Back Office <span class="arrow"><i class="fa fa-briefcase"></i></span></a></li>
                     <li><a href="#" class="nav-link" data-section="about">About <span class="arrow"><i class="fa fa-arrow-right"></i></span></a></li>
                     <li><a href="#" class="nav-link" data-section="categories">Categories and Descriptions <span class="arrow"><i class="fa fa-arrow-right"></i></span></a></li>
                     <li><a href="#" class="nav-link" data-section="nominations">Nominations <span class="arrow"><i class="fa fa-arrow-right"></i></span></a></li>
@@ -111,7 +99,6 @@
                 <nav class="footer-nav">
                     <a href="#" onclick="showSection('about'); return false;">About</a> -
                     <a href="#" onclick="showSection('categories'); return false;">Categories and Descriptions</a><br>
-                    <a href="#" onclick="showSection('backoffice'); return false;">Back Office</a> -
                     <a href="#" onclick="showSection('nominations'); return false;">Nominations</a> -
                     <a href="#" onclick="showSection('voting'); return false;">Voting</a> -
                     <a href="#" onclick="showSection('flow'); return false;">Flow of Events</a> -
@@ -145,7 +132,7 @@
             </div>
         </div>
         <div class="footer-bottom">
-            <p>Copyright &copy; 2024 Extraordinary African. All rights reserved. | <a href="#">Terms &amp; Conditions</a> | Agenda 2063</p>
+            <p>Copyright &copy; 2026 Extraordinary African. All rights reserved. | <a href="#">Terms &amp; Conditions</a> | Agenda 2063</p>
         </div>
     </footer>
 

@@ -34,14 +34,22 @@
         }
     }
 
-    function apiHeaders() {
-        const headers = { 'Accept': 'application/json', 'Content-Type': 'application/json' };
+    function apiHeaders(body) {
+        const headers = { 'Accept': 'application/json' };
+        if (!(body instanceof FormData)) headers['Content-Type'] = 'application/json';
         if (apiState.token) headers.Authorization = 'Bearer ' + apiState.token;
         return headers;
     }
 
     async function apiRequest(path, options) {
-        const response = await fetch('/api/v1' + path, { headers: apiHeaders(), ...options });
+        const requestOptions = options || {};
+        const response = await fetch('/api/v1' + path, {
+            ...requestOptions,
+            headers: {
+                ...apiHeaders(requestOptions.body),
+                ...(requestOptions.headers || {}),
+            },
+        });
         const payload = await response.json().catch(function () {
             return { success: false, message: 'The server returned an unreadable response.' };
         });
@@ -63,6 +71,49 @@
             if (String(value).trim() !== '') payload[key] = value;
         });
         return payload;
+    }
+
+    function getDeviceFingerprint() {
+        const storageKey = 'ea_device_id';
+        let deviceId = '';
+
+        try {
+            deviceId = localStorage.getItem(storageKey) || '';
+            if (!deviceId) {
+                deviceId = makeDeviceId();
+                localStorage.setItem(storageKey, deviceId);
+            }
+        } catch (error) {}
+
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+        const display = window.screen
+            ? [screen.width, screen.height, screen.colorDepth].join('x')
+            : '';
+
+        return [
+            deviceId,
+            navigator.userAgent || '',
+            navigator.language || '',
+            navigator.platform || '',
+            timezone,
+            display,
+            navigator.hardwareConcurrency || '',
+            navigator.deviceMemory || '',
+        ].join('|');
+    }
+
+    function makeDeviceId() {
+        if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+
+        if (window.crypto?.getRandomValues) {
+            const values = new Uint32Array(4);
+            window.crypto.getRandomValues(values);
+            return Array.from(values).map(function (value) {
+                return value.toString(16).padStart(8, '0');
+            }).join('');
+        }
+
+        return String(Date.now()) + '-' + String(Math.random()).slice(2);
     }
 
     function setMessage(id, message, type) {
@@ -88,24 +139,46 @@
         updateAuthUi();
     }
 
+    function isSuperAdmin() {
+        return apiState.user?.role === 'Super Admin' || apiState.user?.role === 'super_admin';
+    }
+
     function updateAuthUi() {
         const signedIn = Boolean(apiState.token && apiState.user);
         const label = signedIn
             ? 'Signed in as ' + apiState.user.name + ' (' + apiState.user.email + ')'
-            : 'You are not signed in. Create an account or sign in before nominating or voting.';
+            : 'You are not signed in. Create an account before nominating or voting.';
 
-        ['authStatus', 'nominationAuthStatus', 'votingAuthStatus', 'backofficeAuthStatus'].forEach(function (id) {
+        ['authStatus', 'votingAuthStatus', 'backofficeAuthStatus'].forEach(function (id) {
             const el = document.getElementById(id);
             if (!el) return;
             el.textContent = label;
             el.classList.toggle('is-ok', signedIn);
         });
 
+        const nominationStatus = document.getElementById('nominationAuthStatus');
+        if (nominationStatus) {
+            nominationStatus.classList.toggle('is-ok', signedIn);
+            nominationStatus.classList.toggle('with-action', !signedIn);
+            if (signedIn) {
+                nominationStatus.textContent = label;
+            } else {
+                nominationStatus.innerHTML = '<span>You are not signed in. Create an account before nominating or voting.</span><button type="button" class="auth-status-action" id="nominationCreateAccountBtn"><i class="fa fa-user-plus" aria-hidden="true"></i><span>Create Account</span></button>';
+                document.getElementById('nominationCreateAccountBtn')?.addEventListener('click', function () {
+                    showSection('account');
+                });
+            }
+        }
+
         const logoutBtn = document.getElementById('logoutBtn');
         if (logoutBtn) logoutBtn.style.display = signedIn ? '' : 'none';
 
         const nominationForm = document.getElementById('nominationForm');
         if (nominationForm) nominationForm.classList.toggle('is-disabled', !signedIn);
+
+        document.querySelectorAll('.admin-only').forEach(function (el) {
+            el.style.display = isSuperAdmin() ? '' : 'none';
+        });
     }
 
     async function loadCurrentUser() {
@@ -137,6 +210,10 @@
                     registerForm.reset();
                     setMessage('registerMessage', 'Account created. You can now nominate and vote.', 'success');
                     await loadCategories();
+                    if (typeof window.showSection === 'function' && document.getElementById('nominationForm')) {
+                        window.showSection('nominations');
+                        setMessage('nominationMessage', 'Account created. You can submit your nomination now.', 'success');
+                    }
                 } catch (error) {
                     setMessage('registerMessage', formatError(error), 'error');
                 }
@@ -168,6 +245,9 @@
                     if (apiState.token) await apiRequest('/auth/logout', { method: 'POST' });
                 } catch (error) {}
                 clearSession();
+                if (currentSection === 'backoffice' && typeof window.showSection === 'function') {
+                    window.showSection('account');
+                }
             });
         }
     }
@@ -212,22 +292,75 @@
         form.addEventListener('submit', async function (e) {
             e.preventDefault();
             if (!apiState.token) {
-                setMessage('nominationMessage', 'Please create an account or sign in first.', 'error');
+                setMessage('nominationMessage', 'Please create an account first.', 'error');
                 showSection('account');
                 return;
             }
             setMessage('nominationMessage', 'Saving nomination...', 'info');
             try {
-                const payload = await apiRequest('/nominations', {
+                const payload = nominationFormData(form);
+                const response = await apiRequest('/nominations', {
                     method: 'POST',
-                    body: JSON.stringify(formPayload(form)),
+                    body: payload,
                 });
                 form.reset();
-                setMessage('nominationMessage', 'Nomination saved in the database. Reference #' + payload.data.id + '.', 'success');
+                setMessage('nominationMessage', 'Nomination saved successfully.', 'success');
+                showNominationSuccessPopup(response.data.reference_code || response.data.id);
             } catch (error) {
                 setMessage('nominationMessage', formatError(error), 'error');
             }
         });
+    }
+
+    function nominationFormData(form) {
+        const data = new FormData(form);
+        const links = String(data.get('achievement_links') || '')
+            .split(/\r\n|\r|\n|,/)
+            .map(function (link) { return link.trim(); })
+            .filter(Boolean);
+
+        data.delete('achievement_links');
+        links.forEach(function (link) {
+            data.append('achievement_links[]', link);
+        });
+        data.append('device_fingerprint', getDeviceFingerprint());
+
+        return data;
+    }
+
+    function showNominationSuccessPopup(referenceCode) {
+        const existing = document.getElementById('nominationSuccessOverlay');
+        if (existing) existing.remove();
+
+        const overlay = document.createElement('div');
+        overlay.className = 'nomination-success-overlay';
+        overlay.id = 'nominationSuccessOverlay';
+        overlay.innerHTML = '<div class="nomination-success-popup" role="dialog" aria-modal="true" aria-labelledby="nominationSuccessTitle">' +
+            '<button type="button" class="nomination-success-close" aria-label="Close">&times;</button>' +
+            '<div class="nomination-success-icon"><i class="fa fa-check" aria-hidden="true"></i></div>' +
+            '<h3 id="nominationSuccessTitle">Nomination Submitted</h3>' +
+            '<p>The nomination was saved successfully.</p>' +
+            '<div class="nomination-reference"><span>Reference Code</span><strong>' + escapeHtml(referenceCode) + '</strong></div>' +
+            '<button type="button" class="btn-submit nomination-success-done">Done</button>' +
+            '</div>';
+
+        document.body.appendChild(overlay);
+
+        function closePopup() {
+            overlay.remove();
+            document.removeEventListener('keydown', handleKeydown);
+        }
+
+        function handleKeydown(event) {
+            if (event.key === 'Escape') closePopup();
+        }
+
+        overlay.addEventListener('click', function (event) {
+            if (event.target === overlay) closePopup();
+        });
+        overlay.querySelector('.nomination-success-close').addEventListener('click', closePopup);
+        overlay.querySelector('.nomination-success-done').addEventListener('click', closePopup);
+        document.addEventListener('keydown', handleKeydown);
     }
 
     function bindVotingControls() {
@@ -268,7 +401,8 @@
         }
         grid.innerHTML = nominees.map(function (nominee) {
             const image = nominee.profile_image || 'https://placehold.co/320x220/4A1628/F5A623?text=Nominee';
-            return '<article class="nominee-card"><img src="' + escapeHtml(image) + '" alt="' + escapeHtml(nominee.full_name) + '"><div class="nominee-card-body"><h3>' + escapeHtml(nominee.full_name) + '</h3><p>' + escapeHtml(nominee.bio || 'No biography provided yet.') + '</p><div class="nominee-meta"><span>' + Number(nominee.vote_count || 0) + ' votes</span></div><button type="button" class="btn-submit vote-btn" data-nominee-id="' + nominee.id + '">Vote</button></div></article>';
+            const country = nominee.country ? escapeHtml(nominee.country) + ' - ' : '';
+            return '<article class="nominee-card"><img src="' + escapeHtml(image) + '" alt="' + escapeHtml(nominee.full_name) + '"><div class="nominee-card-body"><h3>' + escapeHtml(nominee.full_name) + '</h3><p>' + escapeHtml(nominee.bio || 'No biography provided yet.') + '</p><div class="nominee-meta"><span>' + country + Number(nominee.vote_count || 0) + ' votes</span></div><button type="button" class="btn-submit vote-btn" data-nominee-id="' + nominee.id + '">Vote</button></div></article>';
         }).join('');
         grid.querySelectorAll('.vote-btn').forEach(function (button) {
             button.addEventListener('click', async function () {
@@ -301,6 +435,7 @@
     }
 
     const boState = {
+        dashboard: null,
         nominations: [],
         nominees: [],
         categories: [],
@@ -347,6 +482,12 @@
     }
 
     async function loadBackOffice() {
+        if (!isSuperAdmin()) {
+            setMessage('loginMessage', 'Back Office access requires a Super Admin account.', 'error');
+            if (typeof window.showSection === 'function') showSection('account');
+            return;
+        }
+
         if (!apiState.token) {
             setBackOfficeTable('boNominationsBody', 5, 'Sign in as a back-office user first.');
             showSection('account');
@@ -373,20 +514,93 @@
         if (!grid) return;
         try {
             const payload = await apiRequest('/dashboard/admin', { method: 'GET' });
-            const s = payload.data.summary;
-            grid.innerHTML = [
-                metricCard('Nominees', s.total_nominees),
-                metricCard('Votes', s.total_votes),
-                metricCard('Categories', s.total_categories),
-                metricCard('Active Phase', s.active_phase || 'None'),
-            ].join('');
+            boState.dashboard = payload.data;
+            renderAdminDashboard();
         } catch (error) {
             grid.innerHTML = '<div class="empty-state">Back-office access requires a super admin account.</div>';
+            ['boPhaseStatusList', 'boTopNomineesList', 'boCategoryVotesList'].forEach(function (id) {
+                const el = document.getElementById(id);
+                if (el) el.innerHTML = '';
+            });
         }
     }
 
     function metricCard(label, value) {
         return '<div class="metric-card"><span>' + escapeHtml(label) + '</span><strong>' + escapeHtml(value) + '</strong></div>';
+    }
+
+    function renderAdminDashboard() {
+        const dashboard = boState.dashboard;
+        const grid = document.getElementById('adminMetricGrid');
+        if (!dashboard || !grid) return;
+
+        const s = dashboard.summary || {};
+        grid.innerHTML = [
+            metricCard('Nominees', s.total_nominees || 0),
+            metricCard('Votes', s.total_votes || 0),
+            metricCard('Categories', s.total_categories || 0),
+            metricCard('Active Phase', s.active_phase || 'None'),
+        ].join('');
+
+        renderBackOfficeList(
+            'boPhaseStatusList',
+            dashboard.phase_status || [],
+            function (phase) {
+                return listItem(
+                    phase.name,
+                    formatDate(phase.start_date) + ' - ' + formatDate(phase.end_date),
+                    phase.status
+                );
+            },
+            'No phases configured.'
+        );
+
+        renderBackOfficeList(
+            'boTopNomineesList',
+            dashboard.top_nominees || [],
+            function (nominee) {
+                return listItem(
+                    nominee.full_name,
+                    Number(nominee.vote_count || 0) + ' votes',
+                    'Ranked'
+                );
+            },
+            'No nominees yet.'
+        );
+
+        renderBackOfficeList(
+            'boCategoryVotesList',
+            dashboard.votes_by_category || [],
+            function (category) {
+                return listItem(
+                    category.category,
+                    Number(category.vote_count || 0) + ' votes',
+                    'Category'
+                );
+            },
+            'No category votes yet.'
+        );
+
+        setCount('boPhaseCount', dashboard.phase_status?.length || 0);
+        setCount('boTopNomineeCount', dashboard.top_nominees?.length || 0);
+        setCount('boVoteCategoryCount', dashboard.votes_by_category?.length || 0);
+    }
+
+    function renderBackOfficeList(id, items, renderer, emptyMessage) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.innerHTML = items.length
+            ? items.map(renderer).join('')
+            : '<div class="empty-state">' + escapeHtml(emptyMessage) + '</div>';
+    }
+
+    function listItem(title, meta, tag) {
+        return '<div class="bo-list-item"><div><strong>' + escapeHtml(title) + '</strong><span>' + escapeHtml(meta) + '</span></div><em>' + escapeHtml(tag) + '</em></div>';
+    }
+
+    function setCount(id, value) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = Number(value || 0);
     }
 
     async function loadBackOfficeNominations() {
@@ -637,6 +851,11 @@
        SECTION SWITCHING
        ========================================= */
     window.showSection = function (sectionId) {
+        if (sectionId === 'backoffice') {
+            window.location.href = '/back-office/login';
+            return;
+        }
+
         /* Show inner layout, hide hero */
         heroSection.style.display  = 'none';
         innerLayout.style.display  = 'flex';
@@ -677,9 +896,6 @@
             loadNominees();
         }
 
-        if (sectionId === 'backoffice') {
-            loadBackOffice();
-        }
     };
 
     /* =========================================
@@ -729,18 +945,255 @@
        ========================================= */
     function bindSearch() {
         if (!searchToggle || !searchBar) return;
+        const input = searchBar.querySelector('input');
+        const submit = searchBar.querySelector('button');
+        const resultsEl = document.getElementById('siteSearchResults');
+        const searchIndex = buildSearchIndex();
+
+        if (!input || !submit || !resultsEl) return;
+
         searchToggle.addEventListener('click', function () {
-            searchBar.classList.toggle('active');
-            if (searchBar.classList.contains('active')) {
-                searchBar.querySelector('input').focus();
+            const shouldOpen = !searchBar.classList.contains('active');
+            searchBar.classList.add('active');
+            input.focus();
+
+            if (!shouldOpen && input.value.trim()) {
+                performSearch(true);
+            } else if (input.value.trim()) {
+                renderSearchResults(searchIndex, input.value, resultsEl);
+            }
+        });
+
+        submit.addEventListener('click', function () {
+            performSearch(true);
+        });
+
+        input.addEventListener('input', function () {
+            renderSearchResults(searchIndex, input.value, resultsEl);
+        });
+
+        input.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                performSearch(true);
+            }
+
+            if (event.key === 'Escape') {
+                closeSearch();
             }
         });
 
         document.addEventListener('click', function (e) {
-            if (!searchBar.contains(e.target) && e.target !== searchToggle) {
-                searchBar.classList.remove('active');
+            if (!searchBar.contains(e.target) && !resultsEl.contains(e.target) && !searchToggle.contains(e.target)) {
+                closeSearch();
             }
         });
+
+        function performSearch(openBestMatch) {
+            const matches = renderSearchResults(searchIndex, input.value, resultsEl);
+
+            if (openBestMatch && matches.length) {
+                openSearchResult(matches[0]);
+            }
+        }
+
+        function closeSearch() {
+            searchBar.classList.remove('active');
+            resultsEl.classList.remove('active');
+            resultsEl.innerHTML = '';
+            input.setAttribute('aria-expanded', 'false');
+        }
+
+        function openSearchResult(result) {
+            closeSearch();
+            input.value = '';
+
+            if (result.sectionId === 'home') {
+                showHome();
+                return;
+            }
+
+            showSection(result.sectionId);
+            highlightSearchTarget(result.sectionId);
+        }
+    }
+
+    function buildSearchIndex() {
+        const entries = [];
+        const heroText = document.querySelector('.hero-text');
+
+        if (heroText) {
+            const text = normalizeDisplayText(heroText.textContent);
+            entries.push({
+                sectionId: 'home',
+                title: 'Home',
+                text: text,
+                searchText: normalizeSearchText(text),
+            });
+        }
+
+        document.querySelectorAll('.section-content').forEach(function (section) {
+            const sectionId = String(section.id || '').replace(/^section-/, '');
+            if (!sectionId) return;
+
+            const title = section.querySelector('.section-title')?.textContent?.trim() || readableSectionName(sectionId);
+            const modalText = Array.from(section.querySelectorAll('[data-modal-title], [data-modal-text], [data-modal-tag]'))
+                .map(function (item) {
+                    return [
+                        item.dataset.modalTitle,
+                        item.dataset.modalText,
+                        item.dataset.modalTag,
+                    ].filter(Boolean).join(' ');
+                })
+                .join(' ');
+
+            const text = normalizeDisplayText([title, section.textContent, modalText].join(' '));
+
+            entries.push({
+                sectionId: sectionId,
+                title: title,
+                text: text,
+                searchText: normalizeSearchText(text),
+            });
+        });
+
+        return entries;
+    }
+
+    function renderSearchResults(searchIndex, query, resultsEl) {
+        const input = document.getElementById('siteSearchInput');
+        const matches = searchSite(searchIndex, query).slice(0, 7);
+        const cleanQuery = query.trim();
+
+        if (!cleanQuery) {
+            resultsEl.classList.remove('active');
+            resultsEl.innerHTML = '';
+            if (input) input.setAttribute('aria-expanded', 'false');
+            return [];
+        }
+
+        resultsEl.classList.add('active');
+        if (input) input.setAttribute('aria-expanded', 'true');
+
+        if (!matches.length) {
+            resultsEl.innerHTML = '<div class="search-empty">No matching page content found.</div>';
+            return [];
+        }
+
+        resultsEl.innerHTML = matches.map(function (match, index) {
+            return '<button type="button" class="search-result" role="option" data-search-index="' + index + '">' +
+                '<strong>' + escapeHtml(match.title) + '</strong>' +
+                '<span>' + highlightQuery(makeSearchSnippet(match.text, cleanQuery), cleanQuery) + '</span>' +
+                '</button>';
+        }).join('');
+
+        resultsEl.querySelectorAll('.search-result').forEach(function (button) {
+            button.addEventListener('click', function () {
+                const result = matches[Number(button.dataset.searchIndex)];
+                if (!result) return;
+
+                searchBar.classList.remove('active');
+                resultsEl.classList.remove('active');
+                resultsEl.innerHTML = '';
+                if (input) {
+                    input.value = '';
+                    input.setAttribute('aria-expanded', 'false');
+                }
+
+                if (result.sectionId === 'home') {
+                    showHome();
+                } else {
+                    showSection(result.sectionId);
+                    highlightSearchTarget(result.sectionId);
+                }
+            });
+        });
+
+        return matches;
+    }
+
+    function searchSite(searchIndex, query) {
+        const normalizedQuery = normalizeSearchText(query);
+        const terms = normalizedQuery.split(' ').filter(Boolean);
+
+        if (!terms.length) return [];
+
+        return searchIndex
+            .map(function (entry) {
+                const title = normalizeSearchText(entry.title);
+                let score = 0;
+
+                terms.forEach(function (term) {
+                    if (title.startsWith(term)) score += 16;
+                    else if (title.includes(term)) score += 10;
+
+                    if (entry.searchText.includes(term)) score += 3;
+                });
+
+                if (title === normalizedQuery) score += 25;
+                if (entry.searchText.includes(normalizedQuery)) score += 8;
+
+                return { ...entry, score: score };
+            })
+            .filter(function (entry) {
+                return entry.score > 0;
+            })
+            .sort(function (a, b) {
+                return b.score - a.score;
+            });
+    }
+
+    function makeSearchSnippet(text, query) {
+        const source = normalizeDisplayText(text);
+        const searchableSource = normalizeSearchText(source);
+        const term = normalizeSearchText(query).split(' ').find(Boolean) || '';
+        const index = term ? searchableSource.indexOf(term) : -1;
+
+        if (index === -1) return source.slice(0, 120) + (source.length > 120 ? '...' : '');
+
+        const start = Math.max(0, index - 44);
+        const end = Math.min(source.length, index + term.length + 86);
+        return (start > 0 ? '...' : '') + source.slice(start, end) + (end < source.length ? '...' : '');
+    }
+
+    function highlightQuery(text, query) {
+        const escaped = escapeHtml(text);
+        const terms = normalizeSearchText(query)
+            .split(' ')
+            .filter(function (term) { return term.length > 1; })
+            .map(escapeRegExp);
+
+        if (!terms.length) return escaped;
+
+        return escaped.replace(new RegExp('(' + terms.join('|') + ')', 'gi'), '<mark>$1</mark>');
+    }
+
+    function normalizeSearchText(value) {
+        return normalizeDisplayText(value).toLowerCase();
+    }
+
+    function normalizeDisplayText(value) {
+        return String(value || '').replace(/\s+/g, ' ').trim();
+    }
+
+    function readableSectionName(sectionId) {
+        return sectionId.replace(/-/g, ' ').replace(/\b\w/g, function (letter) {
+            return letter.toUpperCase();
+        });
+    }
+
+    function escapeRegExp(value) {
+        return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function highlightSearchTarget(sectionId) {
+        const section = document.getElementById('section-' + sectionId);
+        const title = section?.querySelector('.section-title');
+        if (!title) return;
+
+        title.classList.remove('search-hit-highlight');
+        void title.offsetWidth;
+        title.classList.add('search-hit-highlight');
     }
 
     /* =========================================

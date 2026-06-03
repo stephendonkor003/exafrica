@@ -8,13 +8,46 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Nomination extends Model
 {
     protected $fillable = [
-        'nominee_id', 'category_id', 'nominated_by', 'nomination_reason',
-        'evaluator_notes', 'evaluated_by', 'evaluation_status', 'evaluated_at'
+        'reference_code', 'nominee_id', 'category_id', 'nominated_by', 'nominator_ip',
+        'nominator_device_hash', 'nominator_user_agent', 'nomination_reason',
+        'achievement_documents', 'achievement_links',
+        'evaluator_notes', 'evaluated_by', 'evaluation_status', 'evaluated_at',
     ];
 
     protected $casts = [
+        'achievement_documents' => 'array',
+        'achievement_links' => 'array',
         'evaluated_at' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Nomination $nomination): void {
+            if (blank($nomination->reference_code)) {
+                $nomination->reference_code = self::generateReferenceCode();
+            }
+        });
+    }
+
+    private static function generateReferenceCode(): string
+    {
+        $letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        $numbers = '0123456789';
+        $characters = $letters.$numbers;
+
+        do {
+            $code = $letters[random_int(0, strlen($letters) - 1)]
+                .$numbers[random_int(0, strlen($numbers) - 1)];
+
+            for ($i = 0; $i < 5; $i++) {
+                $code .= $characters[random_int(0, strlen($characters) - 1)];
+            }
+
+            $code = str_shuffle($code);
+        } while (static::where('reference_code', $code)->exists());
+
+        return $code;
+    }
 
     public function nominee(): BelongsTo
     {
