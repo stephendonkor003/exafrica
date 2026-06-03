@@ -1,19 +1,49 @@
 @php
-    $defaultSeoSection = config('seo.sections.'.config('seo.default_section'));
-    $seo = $seo ?? [
-        'section' => config('seo.default_section'),
-        'title' => $defaultSeoSection['title'],
-        'description' => $defaultSeoSection['description'],
-        'keywords' => implode(', ', config('seo.keywords', [])),
-        'url' => url('/'),
-        'site_name' => config('seo.site_name'),
-        'brand' => config('seo.brand'),
-        'image' => asset(config('seo.logos.share_card')),
-        'agenda_logo' => asset(config('seo.logos.agenda_2063')),
-        'au_logo' => asset(config('seo.logos.african_union')),
+    $fallbackSeoSection = [
+        'title' => 'Extraordinary African | Agenda 2063',
+        'description' => 'Extraordinary Africans celebrates exceptional African changemakers, innovators, leaders, and creators aligned with Agenda 2063 and The Africa We Want.',
+        'priority' => '1.0',
     ];
-    $publicSections = config('seo.sections');
-    $sectionUrl = static fn ($section) => $section === config('seo.default_section')
+    $fallbackKeywords = [
+        'Extraordinary Africans',
+        'Agenda 2063',
+        'African Union',
+        'The Africa We Want',
+        'African awards',
+        'African innovation',
+        'African changemakers',
+        'African creatives',
+    ];
+    $fallbackLogos = [
+        'share_card' => 'images/seo/extraordinary-africans-share-card.png',
+        'agenda_2063' => 'images/seo/agenda-2063-logo.png',
+        'african_union' => 'images/seo/african-union-logo.png',
+    ];
+
+    $defaultSection = config('seo.default_section', 'home');
+    $seoSections = config('seo.sections', ['home' => $fallbackSeoSection]);
+    $publicSections = is_array($seoSections) && count($seoSections) > 0
+        ? $seoSections
+        : ['home' => $fallbackSeoSection];
+    $defaultSeoSection = $publicSections[$defaultSection] ?? $fallbackSeoSection;
+    $configuredKeywords = config('seo.keywords', $fallbackKeywords);
+    $configuredLogos = config('seo.logos', []);
+    $logos = array_merge($fallbackLogos, is_array($configuredLogos) ? $configuredLogos : []);
+    $seoDefaults = [
+        'section' => $defaultSection,
+        'title' => $defaultSeoSection['title'] ?? $fallbackSeoSection['title'],
+        'description' => $defaultSeoSection['description'] ?? $fallbackSeoSection['description'],
+        'keywords' => implode(', ', is_array($configuredKeywords) ? $configuredKeywords : $fallbackKeywords),
+        'url' => url('/'),
+        'site_name' => config('seo.site_name', 'Extraordinary Africans'),
+        'brand' => config('seo.brand', 'Extraordinary African'),
+        'image' => asset($logos['share_card']),
+        'agenda_logo' => asset($logos['agenda_2063']),
+        'au_logo' => asset($logos['african_union']),
+    ];
+
+    $seo = array_merge($seoDefaults, is_array($seo ?? null) ? $seo : []);
+    $sectionUrl = static fn ($section) => $section === $defaultSection
         ? url('/')
         : url('/?section='.$section);
     $structuredData = [
