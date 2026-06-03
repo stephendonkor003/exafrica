@@ -11,7 +11,6 @@ use App\Http\Controllers\JudgeController;
 use App\Http\Controllers\VotingPhaseController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\UserController;
-use App\Models\Role;
 
 Route::prefix('v1')->group(function () {
     // Auth routes (no authentication required)
@@ -94,11 +93,7 @@ Route::prefix('v1')->group(function () {
 
         // User Management
         Route::middleware('role:super_admin')->group(function () {
-            Route::get('roles', fn () => response()->json([
-                'success' => true,
-                'message' => 'Roles retrieved successfully',
-                'data' => Role::orderBy('name')->get(),
-            ]));
+            Route::get('roles', [UserController::class, 'roles']);
             Route::apiResource('users', UserController::class);
         });
     });

@@ -1,9 +1,109 @@
+@php
+    $defaultSeoSection = config('seo.sections.'.config('seo.default_section'));
+    $seo = $seo ?? [
+        'section' => config('seo.default_section'),
+        'title' => $defaultSeoSection['title'],
+        'description' => $defaultSeoSection['description'],
+        'keywords' => implode(', ', config('seo.keywords', [])),
+        'url' => url('/'),
+        'site_name' => config('seo.site_name'),
+        'brand' => config('seo.brand'),
+        'image' => asset(config('seo.logos.share_card')),
+        'agenda_logo' => asset(config('seo.logos.agenda_2063')),
+        'au_logo' => asset(config('seo.logos.african_union')),
+    ];
+    $publicSections = config('seo.sections');
+    $sectionUrl = static fn ($section) => $section === config('seo.default_section')
+        ? url('/')
+        : url('/?section='.$section);
+    $structuredData = [
+        '@context' => 'https://schema.org',
+        '@graph' => [
+            [
+                '@type' => 'WebSite',
+                '@id' => url('/').'#website',
+                'name' => $seo['site_name'],
+                'alternateName' => $seo['brand'],
+                'url' => url('/'),
+                'inLanguage' => 'en',
+            ],
+            [
+                '@type' => 'Organization',
+                '@id' => url('/').'#organization',
+                'name' => $seo['site_name'],
+                'url' => url('/'),
+                'logo' => [
+                    '@type' => 'ImageObject',
+                    'url' => $seo['agenda_logo'],
+                    'width' => 207,
+                    'height' => 62,
+                ],
+                'image' => [$seo['image'], $seo['agenda_logo'], $seo['au_logo']],
+            ],
+            [
+                '@type' => 'WebPage',
+                '@id' => $seo['url'].'#webpage',
+                'url' => $seo['url'],
+                'name' => $seo['title'],
+                'description' => $seo['description'],
+                'isPartOf' => ['@id' => url('/').'#website'],
+                'publisher' => ['@id' => url('/').'#organization'],
+                'primaryImageOfPage' => [
+                    '@type' => 'ImageObject',
+                    'url' => $seo['image'],
+                    'width' => 1200,
+                    'height' => 630,
+                ],
+                'about' => [
+                    [
+                        '@type' => 'Thing',
+                        'name' => 'Agenda 2063',
+                        'sameAs' => 'https://www.agenda2063.africa/',
+                        'image' => $seo['agenda_logo'],
+                    ],
+                    [
+                        '@type' => 'Thing',
+                        'name' => 'African Union',
+                        'sameAs' => 'https://au.int/',
+                        'image' => $seo['au_logo'],
+                    ],
+                ],
+                'inLanguage' => 'en',
+            ],
+        ],
+    ];
+@endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Extraordinary African | Agenda 2063</title>
+    <title>{{ $seo['title'] }}</title>
+    <meta name="description" content="{{ $seo['description'] }}">
+    <meta name="keywords" content="{{ $seo['keywords'] }}">
+    <meta name="author" content="{{ $seo['site_name'] }}">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    <meta name="googlebot" content="index, follow">
+    <meta name="theme-color" content="#4A1628">
+    <link rel="canonical" href="{{ $seo['url'] }}">
+    <link rel="image_src" href="{{ $seo['image'] }}">
+    <link rel="icon" type="image/png" href="{{ $seo['agenda_logo'] }}">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="{{ $seo['site_name'] }}">
+    <meta property="og:title" content="{{ $seo['title'] }}">
+    <meta property="og:description" content="{{ $seo['description'] }}">
+    <meta property="og:url" content="{{ $seo['url'] }}">
+    <meta property="og:image" content="{{ $seo['image'] }}">
+    <meta property="og:image:secure_url" content="{{ $seo['image'] }}">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Extraordinary Africans, Agenda 2063, and African Union logos">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ $seo['title'] }}">
+    <meta name="twitter:description" content="{{ $seo['description'] }}">
+    <meta name="twitter:image" content="{{ $seo['image'] }}">
+    <script type="application/ld+json">{!! json_encode($structuredData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}</script>
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
@@ -49,7 +149,7 @@
                     <li>Join <span class="highlight">Extraordinary Africans Initiative</span> and Showcase Your Talent!</li>
                 </ul>
                 <p>A Global Stage for Creativity, Innovation, and Excellence - Submit Your Entry Today!</p>
-                <a href="#" class="btn-apply" onclick="showSection('nominations'); return false;">Apply now</a>
+                <a href="{{ $sectionUrl('nominations') }}" class="btn-apply" onclick="showSection('nominations'); return false;">Apply now</a>
             </div>
         </div>
     </section>
@@ -61,15 +161,15 @@
             <div class="sidebar-scroll-up" id="scrollUp"><i class="fa fa-chevron-up"></i></div>
             <nav class="sidebar-nav">
                 <ul>
-                    <li><a href="#" class="nav-link nav-home" id="homeLink">Home <span class="arrow"><i class="fa fa-house"></i></span></a></li>
-                    <li><a href="#" class="nav-link" data-section="account">Account <span class="arrow"><i class="fa fa-user"></i></span></a></li>
-                    <li><a href="#" class="nav-link" data-section="about">About <span class="arrow"><i class="fa fa-arrow-right"></i></span></a></li>
-                    <li><a href="#" class="nav-link" data-section="categories">Categories and Descriptions <span class="arrow"><i class="fa fa-arrow-right"></i></span></a></li>
-                    <li><a href="#" class="nav-link" data-section="nominations">Nominations <span class="arrow"><i class="fa fa-arrow-right"></i></span></a></li>
-                    <li><a href="#" class="nav-link" data-section="voting">Voting <span class="arrow"><i class="fa fa-check-to-slot"></i></span></a></li>
-                    <li><a href="#" class="nav-link" data-section="flow">Flow of Events <span class="arrow"><i class="fa fa-arrow-right"></i></span></a></li>
-                    <li><a href="#" class="nav-link" data-section="judges">Meet our Judges <span class="arrow"><i class="fa fa-arrow-right"></i></span></a></li>
-                    <li><a href="#" class="nav-link" data-section="winners">Winners <span class="arrow"><i class="fa fa-arrow-right"></i></span></a></li>
+                    <li><a href="{{ url('/') }}" class="nav-link nav-home" id="homeLink">Home <span class="arrow"><i class="fa fa-house"></i></span></a></li>
+                    <li><a href="{{ url('/?section=account') }}" class="nav-link" data-section="account">Account <span class="arrow"><i class="fa fa-user"></i></span></a></li>
+                    <li><a href="{{ $sectionUrl('about') }}" class="nav-link" data-section="about">About <span class="arrow"><i class="fa fa-arrow-right"></i></span></a></li>
+                    <li><a href="{{ $sectionUrl('categories') }}" class="nav-link" data-section="categories">Categories and Descriptions <span class="arrow"><i class="fa fa-arrow-right"></i></span></a></li>
+                    <li><a href="{{ $sectionUrl('nominations') }}" class="nav-link" data-section="nominations">Nominations <span class="arrow"><i class="fa fa-arrow-right"></i></span></a></li>
+                    <li><a href="{{ $sectionUrl('voting') }}" class="nav-link" data-section="voting">Voting <span class="arrow"><i class="fa fa-check-to-slot"></i></span></a></li>
+                    <li><a href="{{ $sectionUrl('flow') }}" class="nav-link" data-section="flow">Flow of Events <span class="arrow"><i class="fa fa-arrow-right"></i></span></a></li>
+                    <li><a href="{{ $sectionUrl('judges') }}" class="nav-link" data-section="judges">Meet our Judges <span class="arrow"><i class="fa fa-arrow-right"></i></span></a></li>
+                    <li><a href="{{ $sectionUrl('winners') }}" class="nav-link" data-section="winners">Winners <span class="arrow"><i class="fa fa-arrow-right"></i></span></a></li>
                 </ul>
             </nav>
             <div class="sidebar-scroll-down" id="scrollDown"><i class="fa fa-chevron-down"></i></div>
@@ -97,13 +197,13 @@
         <div class="footer-inner">
             <div class="footer-left">
                 <nav class="footer-nav">
-                    <a href="#" onclick="showSection('about'); return false;">About</a> -
-                    <a href="#" onclick="showSection('categories'); return false;">Categories and Descriptions</a><br>
-                    <a href="#" onclick="showSection('nominations'); return false;">Nominations</a> -
-                    <a href="#" onclick="showSection('voting'); return false;">Voting</a> -
-                    <a href="#" onclick="showSection('flow'); return false;">Flow of Events</a> -
-                    <a href="#" onclick="showSection('judges'); return false;" class="footer-highlight">Meet our Judges</a><br>
-                    <a href="#" onclick="showSection('winners'); return false;">Winners</a>
+                    <a href="{{ $sectionUrl('about') }}" onclick="showSection('about'); return false;">About</a> -
+                    <a href="{{ $sectionUrl('categories') }}" onclick="showSection('categories'); return false;">Categories and Descriptions</a><br>
+                    <a href="{{ $sectionUrl('nominations') }}" onclick="showSection('nominations'); return false;">Nominations</a> -
+                    <a href="{{ $sectionUrl('voting') }}" onclick="showSection('voting'); return false;">Voting</a> -
+                    <a href="{{ $sectionUrl('flow') }}" onclick="showSection('flow'); return false;">Flow of Events</a> -
+                    <a href="{{ $sectionUrl('judges') }}" onclick="showSection('judges'); return false;" class="footer-highlight">Meet our Judges</a><br>
+                    <a href="{{ $sectionUrl('winners') }}" onclick="showSection('winners'); return false;">Winners</a>
                 </nav>
                 <div class="footer-divider"></div>
                 <div class="footer-social">

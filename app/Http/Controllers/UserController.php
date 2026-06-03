@@ -9,6 +9,11 @@ use Illuminate\Support\Facades\Hash;
 
 class UserController extends BaseController
 {
+    public function roles()
+    {
+        return $this->successResponse(Role::orderBy('name')->get(), 'Roles retrieved successfully');
+    }
+
     public function index(Request $request)
     {
         $query = User::with('role');

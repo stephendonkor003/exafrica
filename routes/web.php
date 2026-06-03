@@ -1,11 +1,12 @@
 <?php
 
 use App\Http\Controllers\BackOfficeWebController;
+use App\Http\Controllers\PublicPageController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', [PublicPageController::class, 'home'])->name('home');
+Route::get('/sitemap.xml', [PublicPageController::class, 'sitemap'])->name('sitemap');
+Route::get('/robots.txt', [PublicPageController::class, 'robots'])->name('robots');
 
 Route::prefix('back-office')->name('backoffice.')->group(function () {
     Route::get('/login', [BackOfficeWebController::class, 'loginForm'])->name('login');
