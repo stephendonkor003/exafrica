@@ -167,10 +167,21 @@
         </div>
     </header>
 
+    <div class="hero-language-control global-language-control" aria-label="Platform language">
+        <div class="language-segment" role="group" aria-label="Choose platform language">
+            <button type="button" class="language-option is-active" data-hero-language="english" data-video-label="English" data-video-src="{{ asset('videos/exaf-nomination-english.mp4') }}" aria-pressed="true">English</button>
+            <button type="button" class="language-option" data-hero-language="french" data-video-label="French" data-video-src="{{ asset('videos/exaf-nomination-french.mp4') }}" aria-pressed="false">French</button>
+            <button type="button" class="language-option" data-hero-language="arabic" data-video-label="Arabic" data-video-src="{{ asset('videos/exaf-nomination-arabic.mp4') }}" aria-pressed="false">Arabic</button>
+        </div>
+        <button type="button" class="hero-sound-toggle" id="heroSoundToggle" aria-label="Play video sound" title="Play video sound">
+            <i class="fa fa-volume-xmark" aria-hidden="true"></i>
+        </button>
+    </div>
+
     <!-- Hero Section (only on home) -->
     <section class="hero-section" id="heroSection">
-        <video class="hero-video" autoplay muted loop playsinline preload="auto" aria-label="Citizens Talk logo reveal">
-            <source src="{{ asset('videos/citizens-talk-logo-reveal-4k.mp4') }}" type="video/mp4">
+        <video class="hero-video" id="heroVideo" autoplay muted loop playsinline preload="auto" aria-label="Extraordinary Africans nomination video">
+            <source id="heroVideoSource" src="{{ asset('videos/exaf-nomination-english.mp4') }}" type="video/mp4">
         </video>
         <div class="hero-overlay" aria-hidden="true"></div>
         <div class="hero-content">
@@ -281,6 +292,9 @@
         </div>
     </div>
 
+    <div id="google_translate_element" class="translation-engine" aria-hidden="true"></div>
+
     <script src="{{ asset('js/app.js') }}"></script>
+    <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 </body>
 </html>

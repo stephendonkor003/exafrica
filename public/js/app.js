@@ -9,6 +9,26 @@
     let currentSection = null;
     let carouselIndex = 0;
     let totalSlides = 0;
+    const heroLanguageStorageKey = 'ea_hero_language';
+    const languageCodeByKey = {
+        english: 'en',
+        french: 'fr',
+        arabic: 'ar',
+    };
+    const translateReloadGuardKey = 'ea_translate_reload_guard';
+
+    window.googleTranslateElementInit = function () {
+        if (!window.google?.translate?.TranslateElement) return;
+
+        new window.google.translate.TranslateElement({
+            pageLanguage: 'en',
+            includedLanguages: 'en,fr,ar',
+            autoDisplay: false,
+            layout: window.google.translate.TranslateElement.InlineLayout.SIMPLE,
+        }, 'google_translate_element');
+
+        applyPlatformLanguage(localStorage.getItem(heroLanguageStorageKey) || 'english');
+    };
 
     function getSlidesVisible() {
         if (window.innerWidth <= 768) return 1;
@@ -837,6 +857,7 @@
         bindHamburger();
         initCarousel();
         initModal();
+        initHeroLanguageVideo();
         initBackendApp();
 
         /* Deep-link support: e.g. ?section=about */
@@ -860,6 +881,8 @@
         heroSection.style.display  = 'none';
         innerLayout.style.display  = 'flex';
         socialFloat.style.display  = 'flex';
+        document.body.classList.add('is-inner-page');
+        pauseHeroVideo();
 
         /* Hide all section panels */
         document.querySelectorAll('.section-content').forEach(function (el) {
@@ -913,8 +936,246 @@
         navLinks.forEach(function (link) { link.classList.remove('active'); });
 
         currentSection = null;
+        document.body.classList.remove('is-inner-page');
+        resumeHeroVideo();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
+
+    /* =========================================
+       HERO VIDEO LANGUAGE
+       ========================================= */
+    function initHeroLanguageVideo() {
+        const video = document.getElementById('heroVideo');
+        const source = document.getElementById('heroVideoSource');
+        const buttons = Array.from(document.querySelectorAll('[data-hero-language]'));
+        const savedLanguage = localStorage.getItem(heroLanguageStorageKey);
+        const savedButton = buttons.find(function (button) {
+            return button.dataset.heroLanguage === savedLanguage;
+        }) || buttons[0];
+
+        if (!video || !source || !buttons.length || !savedButton) return;
+
+        setHeroLanguage(savedButton, { withSound: false, restart: false });
+
+        buttons.forEach(function (button) {
+            button.addEventListener('click', function () {
+                setHeroLanguage(button, { withSound: true, restart: true });
+            });
+        });
+
+        const soundToggle = document.getElementById('heroSoundToggle');
+        if (soundToggle) {
+            soundToggle.addEventListener('click', function () {
+                if (video.muted || video.volume === 0) {
+                    enableHeroSound(video);
+                } else {
+                    video.muted = true;
+                    updateHeroSoundToggle(video);
+                }
+            });
+
+            video.addEventListener('volumechange', function () {
+                updateHeroSoundToggle(video);
+            });
+            video.addEventListener('play', function () {
+                updateHeroSoundToggle(video);
+            });
+            video.addEventListener('pause', function () {
+                updateHeroSoundToggle(video);
+            });
+        }
+
+        function setHeroLanguage(button, options) {
+            const opts = options || {};
+            const nextSrc = button.dataset.videoSrc || '';
+            const label = button.dataset.videoLabel || button.textContent.trim();
+            const hasNewSource = nextSrc && source.getAttribute('src') !== nextSrc;
+
+            buttons.forEach(function (candidate) {
+                const isActive = candidate === button;
+                candidate.classList.toggle('is-active', isActive);
+                candidate.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+            });
+
+            const languageKey = button.dataset.heroLanguage || 'english';
+
+            localStorage.setItem(heroLanguageStorageKey, languageKey);
+            applyPlatformLanguage(languageKey, { userRequested: opts.restart });
+            video.setAttribute('aria-label', 'Extraordinary Africans nomination video in ' + label);
+
+            if (hasNewSource) {
+                source.setAttribute('src', nextSrc);
+                video.load();
+            }
+
+            if (opts.restart) {
+                try {
+                    video.currentTime = 0;
+                } catch (error) {}
+            }
+
+            if (!isHeroVisible()) {
+                video.pause();
+                updateHeroSoundToggle(video);
+            } else if (opts.withSound) {
+                enableHeroSound(video);
+            } else {
+                ensureHeroVideoPlaying(video);
+            }
+        }
+    }
+
+    function applyPlatformLanguage(languageKey, options) {
+        const opts = options || {};
+        const code = languageCodeByKey[languageKey] || 'en';
+        document.documentElement.setAttribute('lang', code);
+        document.documentElement.setAttribute('dir', code === 'ar' ? 'rtl' : 'ltr');
+        document.body?.classList.toggle('is-rtl-language', code === 'ar');
+
+        if (code === 'en') {
+            const wasTranslated = isTranslatedPage();
+            sessionStorage.removeItem(translateReloadGuardKey);
+            clearGoogleTranslateCookie();
+
+            if (opts.userRequested && wasTranslated) {
+                reloadWithCurrentSection();
+            }
+
+            return;
+        }
+
+        setGoogleTranslateCookie(code);
+        selectGoogleTranslateLanguage(code, 0, Boolean(opts.userRequested));
+    }
+
+    function setGoogleTranslateCookie(code) {
+        const value = '/en/' + code;
+        const expires = 'expires=Fri, 31 Dec 9999 23:59:59 GMT';
+        document.cookie = 'googtrans=' + value + ';' + expires + ';path=/';
+
+        if (window.location.hostname.indexOf('.') > -1) {
+            document.cookie = 'googtrans=' + value + ';' + expires + ';domain=.' + window.location.hostname + ';path=/';
+        }
+    }
+
+    function clearGoogleTranslateCookie() {
+        const expires = 'expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        document.cookie = 'googtrans=;' + expires + ';path=/';
+        document.cookie = 'googtrans=/en/en;' + expires + ';path=/';
+
+        if (window.location.hostname.indexOf('.') > -1) {
+            document.cookie = 'googtrans=;' + expires + ';domain=.' + window.location.hostname + ';path=/';
+            document.cookie = 'googtrans=/en/en;' + expires + ';domain=.' + window.location.hostname + ';path=/';
+        }
+    }
+
+    function isTranslatedPage() {
+        return document.cookie.indexOf('googtrans=') !== -1 ||
+            document.documentElement.className.indexOf('translated-') !== -1 ||
+            Boolean(document.querySelector('html.translated-ltr, html.translated-rtl'));
+    }
+
+    function selectGoogleTranslateLanguage(code, attempt, reloadIfMissing) {
+        const combo = document.querySelector('.goog-te-combo');
+        const tries = attempt || 0;
+
+        if (!combo) {
+            if (tries < 24) {
+                setTimeout(function () {
+                    selectGoogleTranslateLanguage(code, tries + 1, reloadIfMissing);
+                }, 250);
+            } else if (reloadIfMissing) {
+                reloadOnceForTranslation(code);
+            }
+            return;
+        }
+
+        sessionStorage.removeItem(translateReloadGuardKey);
+        combo.value = Array.from(combo.options).some(function (option) {
+            return option.value === code;
+        }) ? code : '';
+
+        combo.dispatchEvent(new Event('change'));
+    }
+
+    function reloadOnceForTranslation(code) {
+        const guardValue = sessionStorage.getItem(translateReloadGuardKey);
+        if (guardValue === code) return;
+
+        sessionStorage.setItem(translateReloadGuardKey, code);
+        reloadWithCurrentSection();
+    }
+
+    function reloadWithCurrentSection() {
+        const url = new URL(window.location.href);
+        const section = currentSection || url.searchParams.get('section') || '';
+
+        if (section) {
+            url.searchParams.set('section', section);
+        } else {
+            url.searchParams.delete('section');
+        }
+
+        window.location.replace(url.toString());
+    }
+
+    function enableHeroSound(video) {
+        video.muted = false;
+        video.volume = 1;
+
+        const playAttempt = video.play();
+        if (playAttempt && typeof playAttempt.catch === 'function') {
+            playAttempt.catch(function () {
+                video.muted = true;
+                updateHeroSoundToggle(video);
+            });
+        }
+
+        updateHeroSoundToggle(video);
+    }
+
+    function ensureHeroVideoPlaying(video) {
+        const playAttempt = video.play();
+        if (playAttempt && typeof playAttempt.catch === 'function') {
+            playAttempt.catch(function () {});
+        }
+
+        updateHeroSoundToggle(video);
+    }
+
+    function pauseHeroVideo() {
+        const video = document.getElementById('heroVideo');
+        if (!video) return;
+        video.pause();
+        updateHeroSoundToggle(video);
+    }
+
+    function resumeHeroVideo() {
+        const video = document.getElementById('heroVideo');
+        if (!video) return;
+        ensureHeroVideoPlaying(video);
+    }
+
+    function isHeroVisible() {
+        return heroSection && heroSection.style.display !== 'none';
+    }
+
+    function updateHeroSoundToggle(video) {
+        const soundToggle = document.getElementById('heroSoundToggle');
+        if (!soundToggle || !video) return;
+
+        const icon = soundToggle.querySelector('i');
+        const soundOn = !video.muted && video.volume > 0 && !video.paused;
+        const label = soundOn ? 'Mute video sound' : 'Play video sound';
+
+        soundToggle.classList.toggle('is-on', soundOn);
+        soundToggle.setAttribute('aria-label', label);
+        soundToggle.setAttribute('title', label);
+
+        if (icon) {
+            icon.className = soundOn ? 'fa fa-volume-high' : 'fa fa-volume-xmark';
+        }
+    }
 
     function bindHomeLink() {
         const homeLink = document.getElementById('homeLink');
