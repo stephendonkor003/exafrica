@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
 use App\Models\Role;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 
 class UserController extends BaseController
 {
@@ -27,6 +28,7 @@ class UserController extends BaseController
         }
 
         $users = $query->paginate(20);
+
         return $this->paginatedResponse($users, 'Users retrieved successfully');
     }
 
@@ -34,11 +36,11 @@ class UserController extends BaseController
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users',
-            'password' => 'required|string|min:8',
+            'email' => 'required|email|max:255|unique:users',
+            'password' => ['required', Password::min(12)->mixedCase()->numbers()->symbols()],
             'role_id' => 'required|exists:roles,id',
-            'phone' => 'nullable|string',
-            'bio' => 'nullable|string',
+            'phone' => 'nullable|string|max:50',
+            'bio' => 'nullable|string|max:5000',
         ]);
 
         $user = User::create([
@@ -63,16 +65,16 @@ class UserController extends BaseController
     {
         $request->validate([
             'name' => 'nullable|string|max:255',
-            'email' => 'nullable|email|unique:users,email,' . $user->id,
-            'phone' => 'nullable|string',
-            'bio' => 'nullable|string',
-            'profile_image' => 'nullable|url',
+            'email' => 'nullable|email|unique:users,email,'.$user->id,
+            'phone' => 'nullable|string|max:50',
+            'bio' => 'nullable|string|max:5000',
+            'profile_image' => 'nullable|url|max:2048',
             'role_id' => 'nullable|exists:roles,id',
             'is_active' => 'nullable|boolean',
         ]);
 
         $user->update($request->only([
-            'name', 'email', 'phone', 'bio', 'profile_image', 'role_id', 'is_active'
+            'name', 'email', 'phone', 'bio', 'profile_image', 'role_id', 'is_active',
         ]));
 
         return $this->successResponse($user->load('role'), 'User updated successfully');
@@ -81,6 +83,7 @@ class UserController extends BaseController
     public function destroy(User $user)
     {
         $user->delete();
+
         return $this->successResponse(null, 'User deleted successfully');
     }
 }

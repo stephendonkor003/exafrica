@@ -39,7 +39,7 @@
     }
 
     const apiState = {
-        token: localStorage.getItem('ea_token') || '',
+        token: sessionStorage.getItem('ea_token') || localStorage.getItem('ea_token') || '',
         user: JSON.parse(localStorage.getItem('ea_user') || 'null'),
         categories: [],
     };
@@ -153,7 +153,8 @@
     function storeSession(data) {
         apiState.token = data.token;
         apiState.user = data.user;
-        localStorage.setItem('ea_token', apiState.token);
+        sessionStorage.setItem('ea_token', apiState.token);
+        localStorage.removeItem('ea_token');
         localStorage.setItem('ea_user', JSON.stringify(apiState.user));
         updateAuthUi();
     }
@@ -161,6 +162,7 @@
     function clearSession() {
         apiState.token = '';
         apiState.user = null;
+        sessionStorage.removeItem('ea_token');
         localStorage.removeItem('ea_token');
         localStorage.removeItem('ea_user');
         updateAuthUi();

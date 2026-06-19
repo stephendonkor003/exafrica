@@ -10,6 +10,7 @@ class VotingPhaseController extends BaseController
     public function index()
     {
         $phases = VotingPhase::orderBy('start_date')->get();
+
         return $this->successResponse($phases, 'Voting phases retrieved successfully');
     }
 
@@ -20,7 +21,7 @@ class VotingPhaseController extends BaseController
             ->where('end_date', '>=', now())
             ->first();
 
-        if (!$phase) {
+        if (! $phase) {
             return $this->errorResponse('No active voting phase', null, 404);
         }
 
@@ -30,15 +31,15 @@ class VotingPhaseController extends BaseController
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string',
-            'description' => 'nullable|string',
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string|max:5000',
             'phase_type' => 'required|in:nomination,evaluation,voting,results|unique:voting_phases',
             'start_date' => 'required|date_format:Y-m-d H:i:s',
             'end_date' => 'required|date_format:Y-m-d H:i:s|after:start_date',
         ]);
 
         $phase = VotingPhase::create($request->only([
-            'name', 'description', 'phase_type', 'start_date', 'end_date'
+            'name', 'description', 'phase_type', 'start_date', 'end_date',
         ]));
 
         return $this->successResponse($phase, 'Voting phase created successfully', 201);
@@ -47,14 +48,14 @@ class VotingPhaseController extends BaseController
     public function update(Request $request, VotingPhase $phase)
     {
         $request->validate([
-            'name' => 'nullable|string',
-            'description' => 'nullable|string',
+            'name' => 'nullable|string|max:255',
+            'description' => 'nullable|string|max:5000',
             'start_date' => 'nullable|date_format:Y-m-d H:i:s',
             'end_date' => 'nullable|date_format:Y-m-d H:i:s|after:start_date',
         ]);
 
         $phase->update($request->only([
-            'name', 'description', 'start_date', 'end_date'
+            'name', 'description', 'start_date', 'end_date',
         ]));
 
         return $this->successResponse($phase, 'Voting phase updated successfully');
@@ -63,6 +64,7 @@ class VotingPhaseController extends BaseController
     public function destroy(VotingPhase $phase)
     {
         $phase->delete();
+
         return $this->successResponse(null, 'Voting phase deleted successfully');
     }
 

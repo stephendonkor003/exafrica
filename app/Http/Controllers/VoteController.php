@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Vote;
-use App\Models\Voter;
 use App\Models\Nominee;
-use App\Models\VoteStatistic;
 use App\Models\PersonalAccessToken;
 use App\Models\User;
+use App\Models\Vote;
+use App\Models\Voter;
+use App\Models\VoteStatistic;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -50,7 +51,7 @@ class VoteController extends BaseController
 
         $accountUser = $this->resolveOptionalAuthenticatedUser($request);
         $voterKey = $this->resolveVoterKey($request);
-        $voter = Voter::firstOrCreate(['mac_address' => $voterKey]);
+        $voter = $this->firstOrCreateVoter($voterKey);
 
         if ($voter->is_blocked) {
             return $this->errorResponse('This voter has been blocked from voting', null, 403);
@@ -71,23 +72,52 @@ class VoteController extends BaseController
             return $this->errorResponse('You have already voted in this category', null, 403);
         }
 
-        $vote = DB::transaction(function () use ($request, $nominee, $voter, $voterKey, $accountUser) {
-            $vote = Vote::create([
-                'nominee_id' => $nominee->id,
-                'category_id' => $nominee->category_id,
-                'voter_id' => $voter->id,
-                'account_user_id' => $accountUser?->id,
-                'mac_address' => $voterKey,
-                'vote_type' => 'public_vote',
-                'ip_address' => $request->ip(),
-            ]);
+        try {
+            $vote = DB::transaction(function () use ($request, $nominee, $voter, $voterKey, $accountUser) {
+                $lockedVoter = Voter::whereKey($voter->id)->lockForUpdate()->firstOrFail();
 
-            $voter->increment('vote_count');
-            $voter->update(['last_voted_at' => now()]);
-            $nominee->increment('vote_count');
+                $alreadyVoted = Vote::where(function ($query) use ($request, $lockedVoter, $voterKey) {
+                    $query->where('voter_id', $lockedVoter->id)
+                        ->orWhere('mac_address', $voterKey);
 
-            return $vote;
-        });
+                    if ($request->ip()) {
+                        $query->orWhere('ip_address', $request->ip());
+                    }
+                })
+                    ->where('category_id', $nominee->category_id)
+                    ->exists();
+
+                if ($alreadyVoted) {
+                    abort(response()->json([
+                        'success' => false,
+                        'message' => 'You have already voted in this category',
+                        'errors' => null,
+                    ], 403));
+                }
+
+                $vote = Vote::create([
+                    'nominee_id' => $nominee->id,
+                    'category_id' => $nominee->category_id,
+                    'voter_id' => $lockedVoter->id,
+                    'account_user_id' => $accountUser?->id,
+                    'mac_address' => $voterKey,
+                    'vote_type' => 'public_vote',
+                    'ip_address' => $request->ip(),
+                ]);
+
+                $lockedVoter->increment('vote_count');
+                $lockedVoter->update(['last_voted_at' => now()]);
+                $nominee->increment('vote_count');
+
+                return $vote;
+            });
+        } catch (QueryException $exception) {
+            if ($this->isDuplicateKeyException($exception)) {
+                return $this->errorResponse('You have already voted in this category', null, 403);
+            }
+
+            throw $exception;
+        }
 
         $this->updateVoteStatistics($nominee->category_id);
 
@@ -104,14 +134,27 @@ class VoteController extends BaseController
         }
 
         if ($request->filled('device_id')) {
-            return 'device:' . hash('sha256', $request->device_id);
+            return 'device:'.hash('sha256', $request->device_id);
         }
 
         if ($request->user()) {
-            return 'user:' . $request->user()->id;
+            return 'user:'.$request->user()->id;
         }
 
-        return 'visitor:' . hash('sha256', ($request->ip() ?? 'unknown') . '|' . (string) $request->userAgent());
+        return 'visitor:'.hash('sha256', ($request->ip() ?? 'unknown').'|'.(string) $request->userAgent());
+    }
+
+    private function firstOrCreateVoter(string $voterKey): Voter
+    {
+        try {
+            return Voter::firstOrCreate(['mac_address' => $voterKey]);
+        } catch (QueryException $exception) {
+            if ($this->isDuplicateKeyException($exception)) {
+                return Voter::where('mac_address', $voterKey)->firstOrFail();
+            }
+
+            throw $exception;
+        }
     }
 
     private function resolveOptionalAuthenticatedUser(Request $request): ?User
@@ -130,13 +173,20 @@ class VoteController extends BaseController
             ->where('token', hash('sha256', $plainTextToken))
             ->first();
 
-        if (! $token?->user?->is_active) {
+        if (! $token || $token->isExpired() || ! $token->user?->is_active) {
+            $token?->delete();
+
             return null;
         }
 
         $token->forceFill(['last_used_at' => now()])->save();
 
         return $token->user;
+    }
+
+    private function isDuplicateKeyException(QueryException $exception): bool
+    {
+        return in_array($exception->getCode(), ['23000', '23505'], true);
     }
 
     private function voteAuditPayload(Vote $vote): array
@@ -225,7 +275,7 @@ class VoteController extends BaseController
         return $this->successResponse([
             'category_id' => $categoryId,
             'nominees' => $nominees,
-            'total_votes' => array_sum(array_map(fn($n) => $n['vote_count'], $nominees->toArray())),
+            'total_votes' => array_sum(array_map(fn ($n) => $n['vote_count'], $nominees->toArray())),
         ], 'Category statistics retrieved successfully');
     }
 

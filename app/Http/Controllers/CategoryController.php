@@ -21,6 +21,7 @@ class CategoryController extends BaseController
     public function index()
     {
         $categories = Category::with('createdBy')->orderBy('position')->paginate(15);
+
         return $this->paginatedResponse($categories, 'Categories retrieved successfully');
     }
 
@@ -28,8 +29,8 @@ class CategoryController extends BaseController
     {
         $request->validate([
             'name' => 'required|string|unique:categories|max:255',
-            'description' => 'nullable|string',
-            'icon' => 'nullable|string',
+            'description' => 'nullable|string|max:5000',
+            'icon' => 'nullable|string|max:100',
             'max_nominees' => 'nullable|integer|min:1',
             'position' => 'nullable|integer',
         ]);
@@ -54,9 +55,9 @@ class CategoryController extends BaseController
     public function update(Request $request, Category $category)
     {
         $request->validate([
-            'name' => 'nullable|string|unique:categories,name,' . $category->id,
-            'description' => 'nullable|string',
-            'icon' => 'nullable|string',
+            'name' => 'nullable|string|max:255|unique:categories,name,'.$category->id,
+            'description' => 'nullable|string|max:5000',
+            'icon' => 'nullable|string|max:100',
             'max_nominees' => 'nullable|integer|min:1',
             'position' => 'nullable|integer',
             'is_active' => 'nullable|boolean',
@@ -70,6 +71,7 @@ class CategoryController extends BaseController
     public function destroy(Category $category)
     {
         $category->delete();
+
         return $this->successResponse(null, 'Category deleted successfully');
     }
 }

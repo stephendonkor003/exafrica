@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Nominee;
-use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -56,6 +55,7 @@ class NomineeController extends BaseController
         }
 
         $nominees = $query->paginate(20);
+
         return $this->paginatedResponse($nominees, 'Nominees retrieved successfully');
     }
 
@@ -74,11 +74,11 @@ class NomineeController extends BaseController
     {
         $request->validate([
             'full_name' => 'required|string|max:255',
-            'bio' => 'nullable|string',
-            'email' => 'nullable|email',
-            'phone' => 'nullable|string',
+            'bio' => 'nullable|string|max:5000',
+            'email' => 'nullable|email|max:255',
+            'phone' => 'nullable|string|max:50',
             'country' => ['nullable', 'string', Rule::in($this->africanCountryNames())],
-            'profile_image' => 'nullable|url',
+            'profile_image' => 'nullable|url:http,https|max:2048',
             'category_id' => 'required|exists:categories,id',
         ]);
 
@@ -100,11 +100,11 @@ class NomineeController extends BaseController
     {
         $request->validate([
             'full_name' => 'nullable|string|max:255',
-            'bio' => 'nullable|string',
-            'email' => 'nullable|email',
-            'phone' => 'nullable|string',
+            'bio' => 'nullable|string|max:5000',
+            'email' => 'nullable|email|max:255',
+            'phone' => 'nullable|string|max:50',
             'country' => ['nullable', 'string', Rule::in($this->africanCountryNames())],
-            'profile_image' => 'nullable|url',
+            'profile_image' => 'nullable|url:http,https|max:2048',
         ]);
 
         $nominee->update($request->only(['full_name', 'bio', 'email', 'phone', 'country', 'profile_image']));
@@ -120,19 +120,21 @@ class NomineeController extends BaseController
     public function destroy(Nominee $nominee)
     {
         $nominee->delete();
+
         return $this->successResponse(null, 'Nominee deleted successfully');
     }
 
     public function approve(Nominee $nominee)
     {
         $nominee->update(['status' => 'approved']);
+
         return $this->successResponse($nominee, 'Nominee approved successfully');
     }
 
     public function reject(Request $request, Nominee $nominee)
     {
-        $request->validate(['rejection_reason' => 'required|string']);
-        
+        $request->validate(['rejection_reason' => 'required|string|max:5000']);
+
         $nominee->update([
             'status' => 'rejected',
             'rejection_reason' => $request->rejection_reason,
@@ -144,6 +146,7 @@ class NomineeController extends BaseController
     public function publish(Nominee $nominee)
     {
         $nominee->update(['status' => 'published']);
+
         return $this->successResponse($nominee, 'Nominee published successfully');
     }
 

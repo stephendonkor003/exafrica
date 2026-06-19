@@ -1,27 +1,26 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CategoryController;
-use App\Http\Controllers\NomineeController;
-use App\Http\Controllers\NominationController;
-use App\Http\Controllers\VoteController;
-use App\Http\Controllers\JudgeController;
-use App\Http\Controllers\VotingPhaseController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\JudgeController;
+use App\Http\Controllers\NominationController;
+use App\Http\Controllers\NomineeController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\VoteController;
+use App\Http\Controllers\VotingPhaseController;
+use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
     // Auth routes (no authentication required)
-    Route::post('/auth/register', [AuthController::class, 'register']);
-    Route::post('/auth/login', [AuthController::class, 'login']);
+    Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:auth');
+    Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:auth');
 
     // Public read/vote routes for the landing page
     Route::get('public/categories', [CategoryController::class, 'publicIndex']);
     Route::get('public/nominees', [NomineeController::class, 'publicIndex']);
     Route::get('public/nominees/{nominee}', [NomineeController::class, 'publicShow']);
-    Route::post('public/votes', [VoteController::class, 'store']);
+    Route::post('public/votes', [VoteController::class, 'store'])->middleware('throttle:public-write');
     Route::get('public/votes/stats/{category}', [VoteController::class, 'getCategoryStats']);
     Route::get('public/votes/candidate/{nominee}', [VoteController::class, 'getCandidateStats']);
 
@@ -54,7 +53,7 @@ Route::prefix('v1')->group(function () {
         });
 
         // Nominations
-        Route::post('nominations', [NominationController::class, 'store']);
+        Route::post('nominations', [NominationController::class, 'store'])->middleware('throttle:nomination-submit');
         Route::middleware('role:super_admin,evaluator')->group(function () {
             Route::get('nominations', [NominationController::class, 'index']);
             Route::put('nominations/{nomination}', [NominationController::class, 'update']);
@@ -63,7 +62,7 @@ Route::prefix('v1')->group(function () {
         });
 
         // Voting & Votes
-        Route::post('votes', [VoteController::class, 'store']);
+        Route::post('votes', [VoteController::class, 'store'])->middleware('throttle:public-write');
         Route::get('votes/stats/{category}', [VoteController::class, 'getCategoryStats']);
         Route::get('votes/candidate/{nominee}', [VoteController::class, 'getCandidateStats']);
         Route::middleware('role:super_admin,voting_analyst')->group(function () {

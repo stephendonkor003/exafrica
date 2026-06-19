@@ -13,7 +13,7 @@ class AuthenticateApiToken
     {
         $plainTextToken = $request->bearerToken();
 
-        if (!$plainTextToken) {
+        if (! $plainTextToken) {
             return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
         }
 
@@ -21,7 +21,9 @@ class AuthenticateApiToken
             ->where('token', hash('sha256', $plainTextToken))
             ->first();
 
-        if (!$token || !$token->user || !$token->user->is_active) {
+        if (! $token || $token->isExpired() || ! $token->user || ! $token->user->is_active) {
+            $token?->delete();
+
             return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
         }
 

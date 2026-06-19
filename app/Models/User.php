@@ -63,13 +63,15 @@ class User extends Authenticatable
         return $this->hasMany(PersonalAccessToken::class);
     }
 
-    public function createApiToken(string $name = 'auth_token'): string
+    public function createApiToken(string $name = 'auth_token', ?int $expiresInMinutes = null): string
     {
         $plainTextToken = Str::random(80);
+        $expiresInMinutes ??= config('security.api_tokens.expiration_minutes');
 
         $this->apiTokens()->create([
             'name' => $name,
             'token' => hash('sha256', $plainTextToken),
+            'expires_at' => $expiresInMinutes > 0 ? now()->addMinutes($expiresInMinutes) : null,
         ]);
 
         return $plainTextToken;

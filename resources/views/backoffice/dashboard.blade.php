@@ -307,7 +307,7 @@
                 <form class="bo-form" id="boUserForm">
                     <label><span>Name</span><input name="name" required type="text"></label>
                     <label><span>Email</span><input name="email" required type="email"></label>
-                    <label><span>Password</span><input name="password" required type="password" minlength="8"></label>
+                    <label><span>Password</span><input name="password" required type="password" minlength="12"></label>
                     <label><span>Role</span><select name="role_id" id="boUserRole" required></select></label>
                     <button type="submit"><i class="fa fa-user-plus"></i><span>Create User</span></button>
                 </form>

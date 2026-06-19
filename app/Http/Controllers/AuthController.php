@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
 use App\Models\Role;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends BaseController
@@ -13,19 +14,19 @@ class AuthController extends BaseController
     public function login(Request $request)
     {
         $request->validate([
-            'email' => 'required|email',
-            'password' => 'required|string|min:6',
+            'email' => 'required|email|max:255',
+            'password' => 'required|string|max:255',
         ]);
 
         $user = User::where('email', $request->email)->with('role')->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (! $user || ! Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
                 'email' => ['The provided credentials are incorrect.'],
             ]);
         }
 
-        if (!$user->is_active) {
+        if (! $user->is_active) {
             throw ValidationException::withMessages([
                 'email' => ['This account has been deactivated.'],
             ]);
@@ -49,8 +50,8 @@ class AuthController extends BaseController
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users',
-            'password' => 'required|string|min:8|confirmed',
+            'email' => 'required|email|max:255|unique:users',
+            'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()],
         ]);
 
         $role = Role::where('slug', 'voter')->first();
@@ -79,12 +80,14 @@ class AuthController extends BaseController
     public function logout(Request $request)
     {
         $request->attributes->get('api_token')?->delete();
+
         return $this->successResponse(null, 'Logout successful');
     }
 
     public function me(Request $request)
     {
         $user = $request->user()->load('role');
+
         return $this->successResponse([
             'id' => $user->id,
             'name' => $user->name,

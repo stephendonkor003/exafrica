@@ -2,12 +2,13 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Category;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\VotingPhase;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use RuntimeException;
 
 class RoleAndPhaseSeeder extends Seeder
 {
@@ -28,12 +29,23 @@ class RoleAndPhaseSeeder extends Seeder
         }
 
         $superAdminRoleId = Role::where('slug', 'super_admin')->value('id');
+        $superAdminName = env('INITIAL_SUPER_ADMIN_NAME', 'Initial Super Admin');
+        $superAdminEmail = env('INITIAL_SUPER_ADMIN_EMAIL');
+        $superAdminPassword = env('INITIAL_SUPER_ADMIN_PASSWORD');
+
+        if (blank($superAdminEmail) || blank($superAdminPassword)) {
+            throw new RuntimeException('Set INITIAL_SUPER_ADMIN_EMAIL and INITIAL_SUPER_ADMIN_PASSWORD before running RoleAndPhaseSeeder.');
+        }
+
+        if (strlen((string) $superAdminPassword) < 12) {
+            throw new RuntimeException('INITIAL_SUPER_ADMIN_PASSWORD must be at least 12 characters long.');
+        }
 
         $admin = User::updateOrCreate(
-            ['email' => 'donkors@africanunion.org'],
+            ['email' => $superAdminEmail],
             [
-                'name' => 'Donkors Admin',
-                'password' => Hash::make('Amodon@2063'),
+                'name' => $superAdminName,
+                'password' => Hash::make($superAdminPassword),
                 'role_id' => $superAdminRoleId,
                 'is_active' => true,
             ]

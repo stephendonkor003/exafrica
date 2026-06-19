@@ -8,7 +8,6 @@ use App\Models\Nominee;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -46,32 +45,33 @@ class NominationController extends BaseController
         $request->validate([
             'nominee_id' => 'nullable|exists:nominees,id|required_without:full_name',
             'full_name' => 'nullable|string|max:255|required_without:nominee_id',
-            'bio' => 'nullable|string',
-            'email' => 'nullable|email',
-            'phone' => 'nullable|string',
+            'bio' => 'nullable|string|max:5000',
+            'email' => 'nullable|email|max:255',
+            'phone' => 'nullable|string|max:50',
             'country' => [
                 Rule::requiredIf(fn () => $request->filled('full_name') && ! $request->filled('nominee_id')),
                 'nullable',
                 'string',
                 Rule::in($africanCountries),
             ],
-            'profile_image' => 'nullable|url',
+            'profile_image' => 'nullable|url:http,https|max:2048',
             'profile_image_file' => [
                 Rule::requiredIf(fn () => $request->filled('full_name')
                     && ! $request->filled('profile_image')
                     && ! $request->hasFile('profile_image_file')),
                 'image',
+                'mimes:jpg,jpeg,png,webp',
                 'max:2048',
             ],
             'category_id' => [
                 'required',
                 Rule::exists('categories', 'id')->where('is_active', true),
             ],
-            'nomination_reason' => 'required|string',
+            'nomination_reason' => 'required|string|max:10000',
             'achievement_documents' => 'nullable|array|max:5',
             'achievement_documents.*' => 'file|mimes:pdf,doc,docx,jpg,jpeg,png,webp|max:2048',
             'achievement_links' => 'nullable|array|max:5',
-            'achievement_links.*' => 'nullable|url|max:2048',
+            'achievement_links.*' => 'nullable|url:http,https|max:2048',
             'device_fingerprint' => 'nullable|string|max:1000',
         ], [
             'achievement_links.*.url' => 'Please enter a valid achievement link, for example https://example.com/story.',
@@ -250,8 +250,8 @@ class NominationController extends BaseController
             return null;
         }
 
-        if (preg_match('/^[a-z][a-z0-9+.-]*:\/\//i', $url)) {
-            return $url;
+        if (preg_match('/^([a-z][a-z0-9+.-]*):\/\//i', $url, $matches)) {
+            return in_array(strtolower($matches[1]), ['http', 'https'], true) ? $url : null;
         }
 
         if (preg_match('/^(www\.|[^\s@]+\.[^\s@]+)/i', $url)) {
@@ -284,12 +284,12 @@ class NominationController extends BaseController
         return collect((array) $request->file('achievement_documents', []))
             ->filter()
             ->map(function ($file) {
-                $path = $file->store('nominations/achievement-documents', 'public');
+                $path = $file->store('nominations/achievement-documents', 'local');
 
                 return [
                     'name' => $file->getClientOriginalName(),
+                    'disk' => 'local',
                     'path' => $path,
-                    'url' => $this->publicStorageUrl($path),
                     'mime_type' => $file->getClientMimeType(),
                     'size' => $file->getSize(),
                 ];

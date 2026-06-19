@@ -18,9 +18,15 @@ class BackOfficeFlowTest extends TestCase
 {
     use RefreshDatabase;
 
+    private const ADMIN_NAME = 'Back Office Admin';
+
+    private const ADMIN_EMAIL = 'back-office-admin@example.com';
+
+    private const ADMIN_PASSWORD = 'StrongAdminPass123!';
+
     public function test_back_office_uses_separate_portal_and_super_admin_login(): void
     {
-        $this->seed(RoleAndPhaseSeeder::class);
+        $this->seedBackOffice();
 
         $this->get('/')
             ->assertOk()
@@ -37,8 +43,8 @@ class BackOfficeFlowTest extends TestCase
             ->assertSee('Enter Back Office');
 
         $this->post('/back-office/login', [
-            'email' => 'donkors@africanunion.org',
-            'password' => 'Amodon@2063',
+            'email' => self::ADMIN_EMAIL,
+            'password' => self::ADMIN_PASSWORD,
         ])->assertRedirect(route('backoffice.dashboard'));
 
         $this->get('/back-office')
@@ -66,7 +72,7 @@ class BackOfficeFlowTest extends TestCase
 
     public function test_voter_cannot_login_to_back_office_portal(): void
     {
-        $this->seed(RoleAndPhaseSeeder::class);
+        $this->seedBackOffice();
 
         User::create([
             'name' => 'Regular Portal Voter',
@@ -89,7 +95,7 @@ class BackOfficeFlowTest extends TestCase
 
     public function test_super_admin_can_open_full_nomination_record_page(): void
     {
-        $this->seed(RoleAndPhaseSeeder::class);
+        $this->seedBackOffice();
 
         $category = Category::firstOrFail();
         $nominator = User::create([
@@ -131,8 +137,8 @@ class BackOfficeFlowTest extends TestCase
             ->assertRedirect(route('backoffice.login'));
 
         $this->post('/back-office/login', [
-            'email' => 'donkors@africanunion.org',
-            'password' => 'Amodon@2063',
+            'email' => self::ADMIN_EMAIL,
+            'password' => self::ADMIN_PASSWORD,
         ])->assertRedirect(route('backoffice.dashboard'));
 
         $this->get(route('backoffice.nominations.show', $nomination))
@@ -152,17 +158,17 @@ class BackOfficeFlowTest extends TestCase
 
     public function test_super_admin_can_manage_back_office_workflows(): void
     {
-        $this->seed(RoleAndPhaseSeeder::class);
+        $this->seedBackOffice();
 
-        $admin = User::where('email', 'donkors@africanunion.org')->firstOrFail();
+        $admin = User::where('email', self::ADMIN_EMAIL)->firstOrFail();
 
-        $this->assertTrue(Hash::check('Amodon@2063', $admin->password));
+        $this->assertTrue(Hash::check(self::ADMIN_PASSWORD, $admin->password));
         $this->assertSame('super_admin', $admin->role->slug);
         $this->assertTrue($admin->is_active);
 
         $token = $this->postJson('/api/v1/auth/login', [
-            'email' => 'donkors@africanunion.org',
-            'password' => 'Amodon@2063',
+            'email' => self::ADMIN_EMAIL,
+            'password' => self::ADMIN_PASSWORD,
         ])
             ->assertOk()
             ->assertJsonPath('data.user.role', 'Super Admin')
@@ -202,8 +208,8 @@ class BackOfficeFlowTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.0.nominee.full_name', 'Vote Stats Nominee')
             ->assertJsonPath('data.0.category.name', $category->name)
-            ->assertJsonPath('data.0.account_user.name', 'Donkors Admin')
-            ->assertJsonPath('data.0.account_user.email', 'donkors@africanunion.org')
+            ->assertJsonPath('data.0.account_user.name', self::ADMIN_NAME)
+            ->assertJsonPath('data.0.account_user.email', self::ADMIN_EMAIL)
             ->assertJsonPath('data.0.ip_address', '203.0.113.44')
             ->assertJsonPath('data.0.mac_address', 'back-office-stats-device')
             ->assertJsonPath('data.0.location', 'Public IP (location lookup not configured)');
@@ -245,7 +251,7 @@ class BackOfficeFlowTest extends TestCase
             ->postJson('/api/v1/users', [
                 'name' => 'Back Office User',
                 'email' => 'back-office-user@example.com',
-                'password' => 'password123',
+                'password' => 'StrongUserPass123!',
                 'role_id' => $roles[0]['id'],
             ])
             ->assertCreated()
@@ -254,7 +260,7 @@ class BackOfficeFlowTest extends TestCase
 
     public function test_registered_voter_cannot_access_back_office_resources(): void
     {
-        $this->seed(RoleAndPhaseSeeder::class);
+        $this->seedBackOffice();
 
         $voter = User::create([
             'name' => 'Regular Voter',
@@ -315,5 +321,20 @@ class BackOfficeFlowTest extends TestCase
         $this->withToken($token)
             ->getJson("/api/v1/nominees/{$pendingNominee->id}")
             ->assertForbidden();
+    }
+
+    private function seedBackOffice(): void
+    {
+        foreach ([
+            'INITIAL_SUPER_ADMIN_NAME' => self::ADMIN_NAME,
+            'INITIAL_SUPER_ADMIN_EMAIL' => self::ADMIN_EMAIL,
+            'INITIAL_SUPER_ADMIN_PASSWORD' => self::ADMIN_PASSWORD,
+        ] as $key => $value) {
+            putenv($key.'='.$value);
+            $_ENV[$key] = $value;
+            $_SERVER[$key] = $value;
+        }
+
+        $this->seed(RoleAndPhaseSeeder::class);
     }
 }

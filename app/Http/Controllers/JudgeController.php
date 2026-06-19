@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Judge;
-use App\Models\User;
 use Illuminate\Http\Request;
 
 class JudgeController extends BaseController
@@ -17,6 +16,7 @@ class JudgeController extends BaseController
         }
 
         $judges = $query->paginate(20);
+
         return $this->paginatedResponse($judges, 'Judges retrieved successfully');
     }
 
@@ -29,9 +29,9 @@ class JudgeController extends BaseController
     {
         $request->validate([
             'user_id' => 'required|exists:users,id|unique:judges',
-            'background' => 'nullable|string',
-            'profile_image' => 'nullable|url',
-            'specialization' => 'nullable|string',
+            'background' => 'nullable|string|max:5000',
+            'profile_image' => 'nullable|url:http,https|max:2048',
+            'specialization' => 'nullable|string|max:255',
         ]);
 
         $judge = Judge::create($request->only(['user_id', 'background', 'profile_image', 'specialization']));
@@ -42,9 +42,9 @@ class JudgeController extends BaseController
     public function update(Request $request, Judge $judge)
     {
         $request->validate([
-            'background' => 'nullable|string',
-            'profile_image' => 'nullable|url',
-            'specialization' => 'nullable|string',
+            'background' => 'nullable|string|max:5000',
+            'profile_image' => 'nullable|url:http,https|max:2048',
+            'specialization' => 'nullable|string|max:255',
         ]);
 
         $judge->update($request->only(['background', 'profile_image', 'specialization']));
@@ -55,18 +55,21 @@ class JudgeController extends BaseController
     public function destroy(Judge $judge)
     {
         $judge->delete();
+
         return $this->successResponse(null, 'Judge deleted successfully');
     }
 
     public function publish(Judge $judge)
     {
         $judge->update(['is_published' => true]);
+
         return $this->successResponse($judge->load('user'), 'Judge published successfully');
     }
 
     public function unpublish(Judge $judge)
     {
         $judge->update(['is_published' => false]);
+
         return $this->successResponse($judge->load('user'), 'Judge unpublished successfully');
     }
 }

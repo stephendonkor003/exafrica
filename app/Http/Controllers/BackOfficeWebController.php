@@ -2,11 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\PersonalAccessToken;
 use App\Models\Nomination;
+use App\Models\PersonalAccessToken;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class BackOfficeWebController extends Controller
@@ -23,8 +24,8 @@ class BackOfficeWebController extends Controller
     public function login(Request $request)
     {
         $credentials = $request->validate([
-            'email' => 'required|email',
-            'password' => 'required|string',
+            'email' => 'required|email|max:255',
+            'password' => 'required|string|max:255',
         ]);
 
         $user = User::with('role')
@@ -46,6 +47,7 @@ class BackOfficeWebController extends Controller
         $token = $user->apiTokens()->create([
             'name' => 'back_office_web',
             'token' => hash('sha256', $plainTextToken),
+            'expires_at' => now()->addMinutes(config('security.api_tokens.backoffice_expiration_minutes')),
         ]);
 
         $request->session()->regenerate();
@@ -93,6 +95,35 @@ class BackOfficeWebController extends Controller
         ]);
     }
 
+    public function downloadNominationDocument(Request $request, Nomination $nomination, int $document)
+    {
+        $user = $this->backOfficeUser($request);
+
+        if (! $user) {
+            return redirect()->route('backoffice.login');
+        }
+
+        $documents = $nomination->achievement_documents ?? [];
+        $record = $documents[$document] ?? null;
+        $path = $record['path'] ?? null;
+        $disk = $record['disk'] ?? 'local';
+
+        abort_unless(
+            $disk === 'local'
+            && is_string($path)
+            && str_starts_with($path, 'nominations/achievement-documents/')
+            && Storage::disk($disk)->exists($path),
+            404
+        );
+
+        $downloadName = str_replace(["\r", "\n"], '', basename((string) ($record['name'] ?? basename($path))));
+
+        return Storage::disk($disk)->download($path, $downloadName, [
+            'Content-Security-Policy' => "default-src 'none'; sandbox",
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
     public function logout(Request $request)
     {
         $this->forgetBackOfficeSession($request);
@@ -111,8 +142,15 @@ class BackOfficeWebController extends Controller
 
         if (! $userId
             || ! $tokenId
-            || ! $request->session()->has('backoffice_api_token')
-            || ! PersonalAccessToken::whereKey($tokenId)->exists()) {
+            || ! $request->session()->has('backoffice_api_token')) {
+            return null;
+        }
+
+        $token = PersonalAccessToken::find($tokenId);
+
+        if (! $token || $token->isExpired()) {
+            $this->forgetBackOfficeSession($request);
+
             return null;
         }
 
@@ -120,6 +158,7 @@ class BackOfficeWebController extends Controller
 
         if (! $user || ! $user->is_active || $user->role?->slug !== 'super_admin') {
             $this->forgetBackOfficeSession($request);
+
             return null;
         }
 

@@ -216,9 +216,9 @@
                         <h3>Documents</h3>
                         @if (count($achievementDocuments))
                             <ul class="bo-record-links">
-                                @foreach ($achievementDocuments as $document)
+                                @foreach ($achievementDocuments as $index => $document)
                                     <li>
-                                        <a href="{{ $document['url'] ?? '#' }}" target="_blank" rel="noopener">
+                                        <a href="{{ isset($document['path']) ? route('backoffice.nominations.documents.show', [$nomination, $index]) : ($document['url'] ?? '#') }}" target="_blank" rel="noopener noreferrer">
                                             <i class="fa fa-paperclip"></i>
                                             <span>{{ $display($document['name'] ?? null, 'Achievement document') }}</span>
                                         </a>
@@ -235,7 +235,7 @@
                             <ul class="bo-record-links">
                                 @foreach ($achievementLinks as $link)
                                     <li>
-                                        <a href="{{ $link }}" target="_blank" rel="noopener">
+                                        <a href="{{ $link }}" target="_blank" rel="noopener noreferrer nofollow">
                                             <i class="fa fa-link"></i>
                                             <span>{{ $link }}</span>
                                         </a>
