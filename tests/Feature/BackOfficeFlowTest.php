@@ -7,6 +7,8 @@ use App\Models\Nomination;
 use App\Models\Nominee;
 use App\Models\Role;
 use App\Models\User;
+use App\Models\Vote;
+use App\Models\Voter;
 use Database\Seeders\RoleAndPhaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -48,6 +50,11 @@ class BackOfficeFlowTest extends TestCase
             ->assertSee('nominationRecordBaseUrl', false)
             ->assertSee('Dashboard')
             ->assertSee('Nominations')
+            ->assertSee('Voting')
+            ->assertSee('bo-panel-voting', false)
+            ->assertSee('boVotingCategoryCards', false)
+            ->assertSee('boVotingCategoryGraph', false)
+            ->assertSee('boVotingRankingGrid', false)
             ->assertSee('Users');
 
         $this->post('/back-office/logout')
@@ -161,10 +168,45 @@ class BackOfficeFlowTest extends TestCase
             ->assertJsonPath('data.user.role', 'Super Admin')
             ->json('data.token');
 
+        $category = Category::firstOrFail();
+        $nominee = Nominee::create([
+            'full_name' => 'Vote Stats Nominee',
+            'country' => 'Ghana',
+            'category_id' => $category->id,
+            'status' => 'approved',
+            'vote_count' => 1,
+        ]);
+        $voter = Voter::create(['mac_address' => 'back-office-stats-device']);
+        Vote::create([
+            'nominee_id' => $nominee->id,
+            'category_id' => $category->id,
+            'voter_id' => $voter->id,
+            'account_user_id' => $admin->id,
+            'mac_address' => $voter->mac_address,
+            'vote_type' => 'public_vote',
+            'ip_address' => '203.0.113.44',
+        ]);
+
         $this->withToken($token)
             ->getJson('/api/v1/dashboard/admin')
             ->assertOk()
-            ->assertJsonPath('data.summary.total_categories', 9);
+            ->assertJsonPath('data.summary.total_categories', 9)
+            ->assertJsonPath('data.category_vote_stats.0.category', $category->name)
+            ->assertJsonPath('data.category_vote_stats.0.public_votes', 1)
+            ->assertJsonPath('data.category_vote_stats.0.total_votes', 1)
+            ->assertJsonPath('data.nominee_vote_stats.0.full_name', 'Vote Stats Nominee')
+            ->assertJsonPath('data.nominee_vote_stats.0.total_votes', 1);
+
+        $this->withToken($token)
+            ->getJson('/api/v1/votes')
+            ->assertOk()
+            ->assertJsonPath('data.0.nominee.full_name', 'Vote Stats Nominee')
+            ->assertJsonPath('data.0.category.name', $category->name)
+            ->assertJsonPath('data.0.account_user.name', 'Donkors Admin')
+            ->assertJsonPath('data.0.account_user.email', 'donkors@africanunion.org')
+            ->assertJsonPath('data.0.ip_address', '203.0.113.44')
+            ->assertJsonPath('data.0.mac_address', 'back-office-stats-device')
+            ->assertJsonPath('data.0.location', 'Public IP (location lookup not configured)');
 
         $roles = $this->withToken($token)
             ->getJson('/api/v1/roles')

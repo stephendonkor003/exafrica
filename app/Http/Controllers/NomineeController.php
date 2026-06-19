@@ -9,6 +9,37 @@ use Illuminate\Validation\Rule;
 
 class NomineeController extends BaseController
 {
+    private const PUBLIC_STATUSES = ['approved', 'published'];
+
+    public function publicIndex(Request $request)
+    {
+        $perPage = min((int) $request->input('per_page', 20), 100);
+        $query = Nominee::with(['category', 'nomination:id,nominee_id,nomination_reason'])
+            ->whereIn('status', self::PUBLIC_STATUSES)
+            ->orderBy('vote_count', 'desc')
+            ->orderBy('full_name');
+
+        if ($request->category_id) {
+            $query->where('category_id', $request->category_id);
+        }
+
+        $nominees = $query->paginate($perPage);
+        $nominees->getCollection()->transform(fn (Nominee $nominee) => $this->publicNomineePayload($nominee));
+
+        return $this->paginatedResponse($nominees, 'Nominees retrieved successfully');
+    }
+
+    public function publicShow(Nominee $nominee)
+    {
+        if (! in_array($nominee->status, self::PUBLIC_STATUSES, true)) {
+            return $this->errorResponse('You do not have permission to access this resource', null, 403);
+        }
+
+        $nominee->load(['category', 'nomination:id,nominee_id,nomination_reason']);
+
+        return $this->successResponse($this->publicNomineePayload($nominee), 'Nominee retrieved successfully');
+    }
+
     public function index(Request $request)
     {
         $query = Nominee::with('category');
@@ -114,5 +145,25 @@ class NomineeController extends BaseController
     {
         $nominee->update(['status' => 'published']);
         return $this->successResponse($nominee, 'Nominee published successfully');
+    }
+
+    private function publicNomineePayload(Nominee $nominee): array
+    {
+        return [
+            'id' => $nominee->id,
+            'full_name' => $nominee->full_name,
+            'bio' => $nominee->bio,
+            'country' => $nominee->country,
+            'profile_image' => $nominee->profile_image,
+            'category_id' => $nominee->category_id,
+            'status' => $nominee->status,
+            'vote_count' => $nominee->vote_count,
+            'category' => $nominee->category ? [
+                'id' => $nominee->category->id,
+                'name' => $nominee->category->name,
+                'description' => $nominee->category->description,
+            ] : null,
+            'nomination_reason' => $nominee->nomination?->nomination_reason,
+        ];
     }
 }

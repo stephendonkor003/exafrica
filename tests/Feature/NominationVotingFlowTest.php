@@ -120,6 +120,68 @@ class NominationVotingFlowTest extends TestCase
             ->assertJsonPath('data.nominees.0.rank', 1);
     }
 
+    public function test_public_can_view_approved_nominees_and_vote_once_per_category_by_device_or_ip(): void
+    {
+        $this->createRoles();
+
+        $admin = User::create([
+            'name' => 'Admin User',
+            'email' => 'admin-public-vote@example.com',
+            'password' => Hash::make('password'),
+            'role_id' => Role::where('slug', 'super_admin')->value('id'),
+            'is_active' => true,
+        ]);
+
+        $category = Category::create([
+            'name' => 'Innovation',
+            'description' => 'Builders changing Africa',
+            'max_nominees' => 5,
+            'is_active' => true,
+            'created_by' => $admin->id,
+        ]);
+
+        $firstNominee = Nominee::create([
+            'full_name' => 'Ama Mensah',
+            'bio' => 'Built a regional clean water platform.',
+            'country' => 'Ghana',
+            'profile_image' => 'https://example.com/ama.jpg',
+            'category_id' => $category->id,
+            'status' => 'approved',
+        ]);
+
+        $secondNominee = Nominee::create([
+            'full_name' => 'Kojo Mensah',
+            'bio' => 'Built a regional education platform.',
+            'country' => 'Kenya',
+            'profile_image' => 'https://example.com/kojo.jpg',
+            'category_id' => $category->id,
+            'status' => 'approved',
+        ]);
+
+        $this->getJson('/api/v1/public/nominees')
+            ->assertOk()
+            ->assertJsonPath('data.0.full_name', 'Ama Mensah')
+            ->assertJsonMissingPath('data.0.email');
+
+        $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.22'])
+            ->postJson('/api/v1/public/votes', [
+                'nominee_id' => $firstNominee->id,
+                'device_id' => 'browser-device-one',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.nominee_id', $firstNominee->id);
+
+        $this->assertSame(1, $firstNominee->fresh()->vote_count);
+
+        $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.22'])
+            ->postJson('/api/v1/public/votes', [
+                'nominee_id' => $secondNominee->id,
+                'device_id' => 'browser-device-two',
+            ])
+            ->assertForbidden()
+            ->assertJsonPath('message', 'You have already voted in this category');
+    }
+
     public function test_user_can_only_submit_one_nomination(): void
     {
         Storage::fake('public');
@@ -154,11 +216,12 @@ class NominationVotingFlowTest extends TestCase
             'country' => 'Ghana',
             'category_id' => $category->id,
             'nomination_reason' => 'Her work expanded access to safe water.',
-            'achievement_links' => ['https://example.com/water-impact'],
+            'achievement_links' => ['example.com/water-impact'],
         ], $voter, files: [
             'profile_image_file' => UploadedFile::fake()->image('one-nomination-profile.jpg'),
         ])
             ->assertCreated()
+            ->assertJsonPath('data.achievement_links.0', 'https://example.com/water-impact')
             ->assertJson(fn ($json) => $json
                 ->whereType('data.reference_code', 'string')
                 ->etc()
@@ -177,6 +240,62 @@ class NominationVotingFlowTest extends TestCase
             ->assertJsonPath('message', 'You have already submitted a nomination');
 
         $this->assertSame(1, Nomination::count());
+    }
+
+    public function test_nomination_link_text_is_cleaned_before_validation(): void
+    {
+        Storage::fake('public');
+        $this->createRoles();
+
+        $admin = User::create([
+            'name' => 'Admin User',
+            'email' => 'admin-clean-links@example.com',
+            'password' => Hash::make('password'),
+            'role_id' => Role::where('slug', 'super_admin')->value('id'),
+            'is_active' => true,
+        ]);
+
+        $voter = User::create([
+            'name' => 'Public Voter',
+            'email' => 'clean-links@example.com',
+            'password' => Hash::make('password123'),
+            'role_id' => Role::where('slug', 'voter')->value('id'),
+            'is_active' => true,
+        ]);
+
+        $category = Category::create([
+            'name' => 'Education',
+            'description' => 'Learning projects',
+            'max_nominees' => 5,
+            'is_active' => true,
+            'created_by' => $admin->id,
+        ]);
+
+        $linksText = implode(', ', [
+            'Evidence includes articles',
+            'example.com/one',
+            'not a link',
+            'https://example.com/two.',
+            'www.example.org/three',
+            'https://example.net/four',
+            'https://example.edu/five',
+            'https://example.africa/six',
+        ]);
+
+        $this->controllerResponse(NominationController::class, 'store', [
+            'full_name' => 'Amina Diallo',
+            'country' => 'Senegal',
+            'category_id' => $category->id,
+            'nomination_reason' => 'She expanded access to community learning.',
+            'achievement_links' => $linksText,
+        ], $voter, files: [
+            'profile_image_file' => UploadedFile::fake()->image('clean-links-profile.jpg'),
+        ])
+            ->assertCreated()
+            ->assertJsonCount(5, 'data.achievement_links')
+            ->assertJsonPath('data.achievement_links.0', 'https://example.com/one')
+            ->assertJsonPath('data.achievement_links.1', 'https://example.com/two')
+            ->assertJsonPath('data.achievement_links.2', 'https://www.example.org/three');
     }
 
     public function test_different_account_cannot_nominate_from_same_device_or_ip(): void

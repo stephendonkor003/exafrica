@@ -807,6 +807,145 @@ body > .skiptranslate,
     line-height: 1.5;
 }
 
+.approved-nominations-showcase {
+    margin-top: 4px;
+}
+
+.nomination-marquee {
+    position: relative;
+    overflow: hidden;
+    margin-top: 16px;
+    padding: 8px 0 16px;
+}
+
+.nomination-marquee::before,
+.nomination-marquee::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 2;
+    width: 56px;
+    pointer-events: none;
+}
+
+.nomination-marquee::before {
+    left: 0;
+    background: linear-gradient(90deg, var(--white), rgba(255,255,255,0));
+}
+
+.nomination-marquee::after {
+    right: 0;
+    background: linear-gradient(270deg, var(--white), rgba(255,255,255,0));
+}
+
+.nomination-marquee-track {
+    display: flex;
+    gap: 18px;
+    width: max-content;
+    animation: nomination-marquee-scroll var(--marquee-duration, 36s) linear infinite;
+}
+
+.nomination-marquee:hover .nomination-marquee-track {
+    animation-play-state: paused;
+}
+
+@keyframes nomination-marquee-scroll {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+}
+
+.approved-nominee-card {
+    flex: 0 0 230px;
+    width: 230px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--white);
+    box-shadow: 0 8px 24px rgba(74,22,40,0.10);
+    color: inherit;
+    cursor: pointer;
+    overflow: hidden;
+    padding: 0;
+    text-align: left;
+    transition: border-color 0.22s, box-shadow 0.22s, transform 0.22s;
+}
+
+.approved-nominee-card:hover,
+.approved-nominee-card:focus-visible {
+    border-color: var(--gold);
+    box-shadow: 0 16px 36px rgba(74,22,40,0.18);
+    transform: translateY(-6px);
+    outline: none;
+}
+
+.approved-nominee-image {
+    display: block;
+    position: relative;
+    aspect-ratio: 4 / 5;
+    overflow: hidden;
+    background: var(--primary);
+}
+
+.approved-nominee-image img,
+.nominee-card-image img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.32s;
+}
+
+.approved-nominee-card:hover .approved-nominee-image img,
+.approved-nominee-card:focus-visible .approved-nominee-image img,
+.voting-nominee-card:hover .nominee-card-image img,
+.voting-nominee-card:focus-visible .nominee-card-image img {
+    transform: scale(1.06);
+}
+
+.approved-nominee-hover {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(74,22,40,0.74);
+    color: var(--gold-light);
+    font-size: 0.82rem;
+    font-weight: 900;
+    opacity: 0;
+    text-transform: uppercase;
+    transition: opacity 0.22s, transform 0.22s;
+    transform: translateY(8px);
+}
+
+.approved-nominee-card:hover .approved-nominee-hover,
+.approved-nominee-card:focus-visible .approved-nominee-hover,
+.voting-nominee-card:hover .approved-nominee-hover,
+.voting-nominee-card:focus-visible .approved-nominee-hover {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.approved-nominee-details {
+    display: grid;
+    gap: 5px;
+    min-height: 82px;
+    padding: 13px 14px 15px;
+}
+
+.approved-nominee-details strong {
+    color: var(--primary);
+    font-size: 0.98rem;
+    line-height: 1.25;
+}
+
+.approved-nominee-details span {
+    color: var(--text-mid);
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
 /* Nomination Form */
 .nomination-form-wrapper { margin-top: 8px; }
 
@@ -1098,6 +1237,26 @@ body > .skiptranslate,
     background: var(--white);
     overflow: hidden;
     box-shadow: var(--shadow);
+}
+
+.voting-nominee-card {
+    cursor: pointer;
+    transition: border-color 0.22s, box-shadow 0.22s, transform 0.22s;
+}
+
+.voting-nominee-card:hover,
+.voting-nominee-card:focus-visible {
+    border-color: var(--gold);
+    box-shadow: 0 16px 40px rgba(74,22,40,0.16);
+    transform: translateY(-5px);
+    outline: none;
+}
+
+.nominee-card-image {
+    position: relative;
+    aspect-ratio: 16 / 10;
+    overflow: hidden;
+    background: var(--primary);
 }
 
 .nominee-card img {
@@ -1878,6 +2037,10 @@ body > .skiptranslate,
     .bo-dashboard-grid { grid-template-columns: 1fr; }
     .app-panel { align-items: stretch; flex-direction: column; }
     .winners-grid { grid-template-columns: 1fr; }
+    .nominee-vote-layout { grid-template-columns: 1fr; min-height: 0; }
+    .nominee-vote-media img { min-height: 0; max-height: 360px; }
+    .nominee-vote-body { padding: 26px 22px 24px; }
+    .nominee-vote-body h2 { font-size: 1.7rem; }
 
     /* Form — single column */
     .form-row { grid-template-columns: 1fr; }
@@ -1952,6 +2115,16 @@ body > .skiptranslate,
     .metric-grid { grid-template-columns: 1fr; }
     .bo-panel-head { align-items: stretch; flex-direction: column; }
     .carousel-btn { width: 34px; height: 34px; }
+    .approved-nominee-card { flex-basis: 190px; width: 190px; }
+    .approved-nominee-details { min-height: 76px; padding: 11px 12px 13px; }
+    .nomination-marquee::before,
+    .nomination-marquee::after { width: 28px; }
+    .nominee-vote-overlay { padding: 10px; }
+    .nominee-vote-dialog { max-height: calc(100vh - 20px); }
+    .nominee-vote-media img { max-height: 290px; }
+    .nominee-vote-body { padding: 22px 18px 20px; }
+    .nominee-vote-body h2 { font-size: 1.45rem; }
+    .nominee-vote-close { top: 10px; right: 10px; }
 }
 
 /* ---- Very small phones ---- */
@@ -1998,6 +2171,148 @@ body > .skiptranslate,
 /* Timeline cards */
 .timeline-card { transition: box-shadow 0.25s, transform 0.25s, border-color 0.25s; }
 .timeline-card:hover { box-shadow: 0 12px 36px rgba(74,22,40,0.16); transform: translateY(-3px); border-color: var(--gold); }
+
+/* =============================================
+   NOMINEE VOTE MODAL
+   ============================================= */
+.nominee-vote-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(28,16,20,0.66);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+}
+
+.nominee-vote-overlay.active {
+    display: flex;
+}
+
+.nominee-vote-dialog {
+    position: relative;
+    width: min(980px, 100%);
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    border: 1px solid rgba(232,160,32,0.36);
+    border-radius: 8px;
+    background: var(--white);
+    box-shadow: 0 30px 80px rgba(0,0,0,0.34);
+    animation: modalIn 0.28s ease-out;
+}
+
+.nominee-vote-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(74,22,40,0.88);
+    color: var(--gold-light);
+    cursor: pointer;
+    font-size: 1.35rem;
+    line-height: 1;
+}
+
+.nominee-vote-close:hover {
+    background: var(--primary);
+}
+
+.nominee-vote-layout {
+    display: grid;
+    grid-template-columns: minmax(280px, 42%) 1fr;
+    min-height: 560px;
+}
+
+.nominee-vote-media {
+    background: var(--primary);
+    min-height: 100%;
+}
+
+.nominee-vote-media img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 560px;
+    object-fit: cover;
+}
+
+.nominee-vote-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 34px 34px 30px;
+}
+
+.nominee-vote-category {
+    align-self: flex-start;
+    border: 1px solid rgba(232,160,32,0.42);
+    border-radius: 999px;
+    background: rgba(232,160,32,0.12);
+    color: #8a5b08;
+    font-size: 0.74rem;
+    font-weight: 900;
+    line-height: 1.2;
+    padding: 7px 11px;
+    text-transform: uppercase;
+}
+
+.nominee-vote-body h2 {
+    color: var(--primary);
+    font-size: 2rem;
+    line-height: 1.1;
+}
+
+.nominee-vote-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.nominee-vote-meta span {
+    border-radius: 999px;
+    background: var(--light-bg);
+    color: var(--text-mid);
+    font-size: 0.82rem;
+    font-weight: 800;
+    padding: 7px 10px;
+}
+
+.nominee-vote-section {
+    border-top: 1px solid var(--border);
+    padding-top: 15px;
+}
+
+.nominee-vote-section h3 {
+    color: var(--gold);
+    font-size: 0.82rem;
+    font-weight: 900;
+    margin-bottom: 7px;
+    text-transform: uppercase;
+}
+
+.nominee-vote-section p {
+    color: var(--text-mid);
+    font-size: 0.95rem;
+    line-height: 1.65;
+}
+
+.nominee-vote-actions {
+    margin-top: auto;
+}
+
+.nominee-vote-actions .btn-submit {
+    min-width: 190px;
+}
 
 /* =============================================
    MODAL

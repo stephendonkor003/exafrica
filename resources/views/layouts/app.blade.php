@@ -209,8 +209,6 @@
                     <li><a href="{{ $sectionUrl('nominations') }}" class="nav-link" data-section="nominations">Nominations <span class="arrow"><i class="fa fa-arrow-right"></i></span></a></li>
                     <li><a href="{{ $sectionUrl('voting') }}" class="nav-link" data-section="voting">Voting <span class="arrow"><i class="fa fa-check-to-slot"></i></span></a></li>
                     <li><a href="{{ $sectionUrl('flow') }}" class="nav-link" data-section="flow">Flow of Events <span class="arrow"><i class="fa fa-arrow-right"></i></span></a></li>
-                    <li><a href="{{ $sectionUrl('judges') }}" class="nav-link" data-section="judges">Meet our Judges <span class="arrow"><i class="fa fa-arrow-right"></i></span></a></li>
-                    <li><a href="{{ $sectionUrl('winners') }}" class="nav-link" data-section="winners">Winners <span class="arrow"><i class="fa fa-arrow-right"></i></span></a></li>
                 </ul>
             </nav>
             <div class="sidebar-scroll-down" id="scrollDown"><i class="fa fa-chevron-down"></i></div>
@@ -242,8 +240,7 @@
                     <a href="{{ $sectionUrl('categories') }}" onclick="showSection('categories'); return false;">Categories and Descriptions</a><br>
                     <a href="{{ $sectionUrl('nominations') }}" onclick="showSection('nominations'); return false;">Nominations</a> -
                     <a href="{{ $sectionUrl('voting') }}" onclick="showSection('voting'); return false;">Voting</a> -
-                    <a href="{{ $sectionUrl('flow') }}" onclick="showSection('flow'); return false;">Flow of Events</a> -
-                    <a href="{{ $sectionUrl('judges') }}" onclick="showSection('judges'); return false;" class="footer-highlight">Meet our Judges</a><br>
+                    <a href="{{ $sectionUrl('flow') }}" onclick="showSection('flow'); return false;">Flow of Events</a><br>
                     <a href="{{ $sectionUrl('winners') }}" onclick="showSection('winners'); return false;">Winners</a>
                 </nav>
                 <div class="footer-divider"></div>
@@ -276,6 +273,35 @@
             <p>Copyright &copy; 2026 Extraordinary African. All rights reserved. | <a href="#">Terms &amp; Conditions</a> | Agenda 2063</p>
         </div>
     </footer>
+
+    <!-- Nominee Vote Modal -->
+    <div class="nominee-vote-overlay" id="nomineeVoteModal" aria-hidden="true">
+        <div class="nominee-vote-dialog" role="dialog" aria-modal="true" aria-labelledby="nomineeVoteTitle">
+            <button type="button" class="nominee-vote-close" id="nomineeVoteClose" aria-label="Close">&times;</button>
+            <div class="nominee-vote-layout">
+                <div class="nominee-vote-media">
+                    <img id="nomineeVoteImage" src="" alt="">
+                </div>
+                <div class="nominee-vote-body">
+                    <span class="nominee-vote-category" id="nomineeVoteCategory"></span>
+                    <h2 id="nomineeVoteTitle"></h2>
+                    <div class="nominee-vote-meta" id="nomineeVoteMeta"></div>
+                    <div class="nominee-vote-section">
+                        <h3>Bio</h3>
+                        <p id="nomineeVoteBio"></p>
+                    </div>
+                    <div class="nominee-vote-section" id="nomineeVoteImpactWrap">
+                        <h3>Nomination</h3>
+                        <p id="nomineeVoteImpact"></p>
+                    </div>
+                    <div class="nominee-vote-actions">
+                        <button type="button" class="btn-submit" id="nomineeVoteSubmit">Vote Now</button>
+                        <div class="form-message" id="nomineeVoteMessage"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Modal -->
     <div class="modal-overlay" id="modalOverlay">

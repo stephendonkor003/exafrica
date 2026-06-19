@@ -715,7 +715,8 @@ a {
 
 .bo-metric-grid,
 .bo-dashboard-grid,
-.bo-visual-grid {
+.bo-visual-grid,
+.bo-voting-grid {
     display: grid;
     gap: 14px;
 }
@@ -732,6 +733,290 @@ a {
 .bo-visual-grid {
     grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.85fr);
     margin-bottom: 14px;
+}
+
+.bo-voting-metrics {
+    margin: 14px 0;
+}
+
+.bo-voting-dashboard-grid {
+    display: grid;
+    grid-template-columns: minmax(360px, 0.9fr) minmax(0, 1.1fr);
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+.bo-voting-category-cards,
+.bo-ranking-grid {
+    display: grid;
+    gap: 12px;
+}
+
+.bo-voting-category-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    border: 1px solid var(--bo-line);
+    border-radius: 8px;
+    background: #f8fafc;
+    padding: 14px;
+}
+
+.bo-voting-category-card > div:first-child span,
+.bo-ranking-card header span {
+    display: block;
+    color: var(--bo-muted);
+    font-size: 0.7rem;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.bo-voting-category-card > div:first-child strong,
+.bo-ranking-card header strong {
+    display: block;
+    margin-top: 4px;
+    color: var(--bo-ink);
+    line-height: 1.25;
+}
+
+.bo-voting-card-stats {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.bo-voting-card-stats span,
+.bo-voting-graph-key span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--bo-muted);
+    font-size: 0.76rem;
+    font-weight: 800;
+    padding: 5px 8px;
+}
+
+.bo-voting-card-stats b {
+    color: var(--bo-primary);
+}
+
+.bo-voting-card-total {
+    text-align: right;
+}
+
+.bo-voting-card-total strong {
+    display: block;
+    color: var(--bo-primary);
+    font-size: 1.45rem;
+    line-height: 1;
+}
+
+.bo-voting-card-total span {
+    color: var(--bo-muted);
+    font-size: 0.72rem;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.bo-voting-card-bar {
+    grid-column: 1 / -1;
+    height: 9px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e7edf5;
+}
+
+.bo-voting-card-bar span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--bo-teal), var(--bo-gold));
+}
+
+.bo-voting-graph {
+    display: grid;
+    gap: 13px;
+}
+
+.bo-voting-graph-row {
+    display: grid;
+    grid-template-columns: minmax(150px, 0.35fr) minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+}
+
+.bo-voting-graph-label strong,
+.bo-voting-graph-label span {
+    display: block;
+}
+
+.bo-voting-graph-label strong {
+    color: var(--bo-ink);
+    font-size: 0.85rem;
+    line-height: 1.25;
+}
+
+.bo-voting-graph-label span {
+    color: var(--bo-muted);
+    font-size: 0.74rem;
+    margin-top: 2px;
+}
+
+.bo-voting-graph-track {
+    height: 16px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e7edf5;
+}
+
+.bo-voting-graph-stack {
+    display: flex;
+    height: 100%;
+    min-width: 4px;
+    overflow: hidden;
+    border-radius: inherit;
+}
+
+.bo-voting-graph-stack span.public,
+.bo-voting-graph-key i.public {
+    background: var(--bo-teal);
+}
+
+.bo-voting-graph-stack span.judge,
+.bo-voting-graph-key i.judge {
+    background: var(--bo-gold);
+}
+
+.bo-voting-graph-key {
+    display: flex;
+    gap: 6px;
+}
+
+.bo-voting-graph-key i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.bo-voting-grid {
+    grid-template-columns: minmax(360px, 0.78fr) minmax(0, 1.22fr);
+}
+
+.bo-table-wrap-compact {
+    box-shadow: none;
+}
+
+.bo-voting-table {
+    min-width: 680px;
+}
+
+.bo-vote-audit-card {
+    margin-top: 14px;
+}
+
+.bo-voting-rankings-card {
+    margin-top: 14px;
+}
+
+.bo-ranking-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.bo-ranking-card {
+    border: 1px solid var(--bo-line);
+    border-radius: 8px;
+    background: #f8fafc;
+    overflow: hidden;
+}
+
+.bo-ranking-card header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border-bottom: 1px solid var(--bo-line);
+    background: #fff;
+    padding: 13px 14px;
+}
+
+.bo-ranking-card header em {
+    flex-shrink: 0;
+    border-radius: 999px;
+    background: rgba(21, 127, 132, 0.11);
+    color: var(--bo-teal);
+    font-size: 0.72rem;
+    font-style: normal;
+    font-weight: 900;
+    padding: 5px 9px;
+}
+
+.bo-ranking-list {
+    display: grid;
+}
+
+.bo-ranking-row {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+}
+
+.bo-ranking-row + .bo-ranking-row {
+    border-top: 1px solid var(--bo-line);
+}
+
+.bo-rank-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--bo-primary), var(--bo-teal));
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 900;
+}
+
+.bo-ranking-row strong,
+.bo-ranking-row span {
+    display: block;
+}
+
+.bo-ranking-row strong {
+    color: var(--bo-ink);
+    font-size: 0.9rem;
+}
+
+.bo-ranking-row span {
+    color: var(--bo-muted);
+    font-size: 0.76rem;
+    margin-top: 2px;
+}
+
+.bo-ranking-row em {
+    color: var(--bo-primary);
+    font-size: 0.82rem;
+    font-style: normal;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.bo-audit-table {
+    min-width: 1180px;
+}
+
+.bo-table code,
+.bo-device-key {
+    color: var(--bo-primary);
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 0.78rem;
+    overflow-wrap: anywhere;
+    white-space: normal;
 }
 
 .bo-metric-card,
@@ -1189,6 +1474,9 @@ a {
 
     .bo-dashboard-grid,
     .bo-visual-grid,
+    .bo-voting-dashboard-grid,
+    .bo-voting-grid,
+    .bo-ranking-grid,
     .bo-form {
         grid-template-columns: 1fr 1fr;
     }
@@ -1255,6 +1543,9 @@ a {
 
     .bo-dashboard-grid,
     .bo-visual-grid,
+    .bo-voting-dashboard-grid,
+    .bo-voting-grid,
+    .bo-ranking-grid,
     .bo-metric-grid,
     .bo-record-grid,
     .bo-record-hero,
@@ -1272,6 +1563,15 @@ a {
     .bo-bar-row {
         grid-template-columns: 1fr;
         gap: 6px;
+    }
+
+    .bo-voting-graph-row {
+        grid-template-columns: 1fr;
+        gap: 7px;
+    }
+
+    .bo-voting-graph-key {
+        justify-content: flex-start;
     }
 
     .bo-bar-value {

@@ -7,7 +7,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Vote extends Model
 {
-    protected $fillable = ['nominee_id', 'category_id', 'voter_id', 'mac_address', 'vote_type', 'judge_id', 'ip_address'];
+    protected $fillable = [
+        'nominee_id', 'category_id', 'voter_id', 'account_user_id', 'mac_address',
+        'vote_type', 'judge_id', 'ip_address'
+    ];
 
     public function nominee(): BelongsTo
     {
@@ -22,6 +25,11 @@ class Vote extends Model
     public function voter(): BelongsTo
     {
         return $this->belongsTo(Voter::class);
+    }
+
+    public function accountUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'account_user_id');
     }
 
     public function judge(): BelongsTo

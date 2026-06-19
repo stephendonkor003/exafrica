@@ -7,6 +7,17 @@ use Illuminate\Http\Request;
 
 class CategoryController extends BaseController
 {
+    public function publicIndex(Request $request)
+    {
+        $perPage = min((int) $request->input('per_page', 100), 100);
+
+        $categories = Category::where('is_active', true)
+            ->orderBy('position')
+            ->paginate($perPage);
+
+        return $this->paginatedResponse($categories, 'Categories retrieved successfully');
+    }
+
     public function index()
     {
         $categories = Category::with('createdBy')->orderBy('position')->paginate(15);

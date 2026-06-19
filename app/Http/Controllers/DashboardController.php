@@ -24,9 +24,36 @@ class DashboardController extends BaseController
             $query->where('vote_type', 'public_vote');
         }])->get();
 
+        $categoryVoteStats = Category::withCount([
+            'nominees',
+            'votes as public_votes_count' => function ($query) {
+                $query->where('vote_type', 'public_vote');
+            },
+            'votes as judge_votes_count' => function ($query) {
+                $query->where('vote_type', 'judge_vote');
+            },
+            'votes as total_votes_count',
+        ])
+            ->orderBy('position')
+            ->get();
+
         $topNominees = Nominee::orderBy('vote_count', 'desc')
             ->limit(10)
             ->get(['id', 'full_name', 'vote_count', 'category_id']);
+
+        $nomineeVoteStats = Nominee::with('category:id,name')
+            ->withCount([
+                'votes as public_votes_count' => function ($query) {
+                    $query->where('vote_type', 'public_vote');
+                },
+                'votes as judge_votes_count' => function ($query) {
+                    $query->where('vote_type', 'judge_vote');
+                },
+                'votes as total_votes_count',
+            ])
+            ->orderByDesc('vote_count')
+            ->orderBy('full_name')
+            ->get(['id', 'full_name', 'country', 'category_id', 'status', 'vote_count']);
 
         $phaseStatus = $this->getPhaseStatus();
 
@@ -42,6 +69,25 @@ class DashboardController extends BaseController
                 'vote_count' => $c->votes_count,
             ]),
             'top_nominees' => $topNominees,
+            'category_vote_stats' => $categoryVoteStats->map(fn($category) => [
+                'id' => $category->id,
+                'category' => $category->name,
+                'nominee_count' => $category->nominees_count,
+                'public_votes' => $category->public_votes_count,
+                'judge_votes' => $category->judge_votes_count,
+                'total_votes' => $category->total_votes_count,
+            ]),
+            'nominee_vote_stats' => $nomineeVoteStats->map(fn($nominee) => [
+                'id' => $nominee->id,
+                'full_name' => $nominee->full_name,
+                'country' => $nominee->country,
+                'status' => $nominee->status,
+                'category_id' => $nominee->category_id,
+                'category' => $nominee->category?->name,
+                'public_votes' => $nominee->public_votes_count,
+                'judge_votes' => $nominee->judge_votes_count,
+                'total_votes' => $nominee->total_votes_count,
+            ]),
             'phase_status' => $phaseStatus,
         ], 'Admin dashboard retrieved successfully');
     }

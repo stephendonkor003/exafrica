@@ -59,6 +59,7 @@
                 <a class="bo-nav-item" href="{{ route('backoffice.dashboard') }}"><i class="fa fa-chart-line"></i><span>Dashboard</span></a>
                 <a class="bo-nav-item active" href="{{ route('backoffice.dashboard') }}#nominations"><i class="fa fa-clipboard-check"></i><span>Nominations</span></a>
                 <a class="bo-nav-item" href="{{ route('backoffice.dashboard') }}#nominees"><i class="fa fa-users"></i><span>Nominees</span></a>
+                <a class="bo-nav-item" href="{{ route('backoffice.dashboard') }}#voting"><i class="fa fa-square-poll-vertical"></i><span>Voting</span></a>
                 <a class="bo-nav-item" href="{{ route('backoffice.dashboard') }}#users"><i class="fa fa-user-shield"></i><span>Users</span></a>
             </nav>
 

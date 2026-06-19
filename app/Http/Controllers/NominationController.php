@@ -38,7 +38,10 @@ class NominationController extends BaseController
         $achievementLinks = $this->normalizedAchievementLinks($request);
         $hasAchievementDocuments = $this->hasUploadedAchievementDocuments($request);
         $africanCountries = $this->africanCountryNames();
-        $request->merge(['achievement_links' => $achievementLinks]);
+        $request->merge([
+            'achievement_links' => $achievementLinks,
+            'profile_image' => $this->normalizeSubmittedUrl($request->input('profile_image')),
+        ]);
 
         $request->validate([
             'nominee_id' => 'nullable|exists:nominees,id|required_without:full_name',
@@ -58,7 +61,7 @@ class NominationController extends BaseController
                     && ! $request->filled('profile_image')
                     && ! $request->hasFile('profile_image_file')),
                 'image',
-                'max:5120',
+                'max:2048',
             ],
             'category_id' => [
                 'required',
@@ -66,10 +69,17 @@ class NominationController extends BaseController
             ],
             'nomination_reason' => 'required|string',
             'achievement_documents' => 'nullable|array|max:5',
-            'achievement_documents.*' => 'file|mimes:pdf,doc,docx,jpg,jpeg,png,webp|max:10240',
+            'achievement_documents.*' => 'file|mimes:pdf,doc,docx,jpg,jpeg,png,webp|max:2048',
             'achievement_links' => 'nullable|array|max:5',
             'achievement_links.*' => 'nullable|url|max:2048',
             'device_fingerprint' => 'nullable|string|max:1000',
+        ], [
+            'achievement_links.*.url' => 'Please enter a valid achievement link, for example https://example.com/story.',
+            'profile_image_file.uploaded' => 'The profile image could not be uploaded. Please use a JPG, PNG, or WEBP image under 2 MB.',
+            'profile_image_file.image' => 'The profile image must be a JPG, PNG, WEBP, or similar image file.',
+            'profile_image_file.max' => 'The profile image must be 2 MB or smaller.',
+            'achievement_documents.*.uploaded' => 'One achievement document could not be uploaded. Please use files under 2 MB or paste the evidence as a link.',
+            'achievement_documents.*.max' => 'Each achievement document must be 2 MB or smaller. You can paste larger evidence as a link.',
         ]);
 
         if (! $hasAchievementDocuments && empty($achievementLinks)) {
@@ -201,16 +211,54 @@ class NominationController extends BaseController
     private function normalizedAchievementLinks(Request $request): array
     {
         $links = $request->input('achievement_links', []);
+        $entries = is_array($links) ? $links : [$links];
 
-        if (is_string($links)) {
-            $links = preg_split('/\r\n|\r|\n|,/', $links) ?: [];
+        return collect($entries)
+            ->flatMap(fn ($link) => preg_split('/\r\n|\r|\n/', (string) $link) ?: [])
+            ->flatMap(fn ($link) => $this->extractSubmittedUrls((string) $link))
+            ->filter()
+            ->map(fn ($link) => $this->normalizeSubmittedUrl($link))
+            ->filter(fn ($link) => filter_var($link, FILTER_VALIDATE_URL))
+            ->unique()
+            ->take(5)
+            ->values()
+            ->all();
+    }
+
+    private function extractSubmittedUrls(string $value): array
+    {
+        $value = trim($value);
+
+        if ($value === '') {
+            return [];
         }
 
-        return collect((array) $links)
-            ->map(fn ($link) => trim((string) $link))
+        preg_match_all('/(?:https?:\/\/|www\.)[^\s,;<>]+|(?<!@)\b[a-z0-9][a-z0-9.-]+\.[a-z]{2,}(?:\/[^\s,;<>]*)?/i', $value, $matches);
+
+        return collect($matches[0] ?? [])
+            ->map(fn ($url) => rtrim($url, '.,;:!?)"]}'))
             ->filter()
             ->values()
             ->all();
+    }
+
+    private function normalizeSubmittedUrl(?string $url): ?string
+    {
+        $url = trim((string) $url);
+
+        if ($url === '') {
+            return null;
+        }
+
+        if (preg_match('/^[a-z][a-z0-9+.-]*:\/\//i', $url)) {
+            return $url;
+        }
+
+        if (preg_match('/^(www\.|[^\s@]+\.[^\s@]+)/i', $url)) {
+            return 'https://'.$url;
+        }
+
+        return $url;
     }
 
     private function hasUploadedAchievementDocuments(Request $request): bool

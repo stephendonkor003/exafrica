@@ -285,6 +285,16 @@
 
     <div class="section-divider"></div>
 
+    <div class="approved-nominations-showcase">
+        <h2 class="section-subtitle">Approved Nominations</h2>
+        <div class="nomination-marquee" id="approvedNominationStrip" aria-live="polite">
+            <div class="empty-state">Loading approved nominations...</div>
+        </div>
+        <div class="form-message" id="nominationVoteMessage"></div>
+    </div>
+
+    <div class="section-divider"></div>
+
     <h2 class="section-subtitle">How to Nominate</h2>
     <div class="steps-grid">
         <div class="step-card"
@@ -377,18 +387,18 @@
             <div class="form-group full-width">
                 <label>Nominee Profile Picture *</label>
                 <input name="profile_image_file" type="file" accept="image/*" required>
-                <span class="form-help">Upload a clear JPG, PNG, WEBP, or similar image of the nominee.</span>
+                <span class="form-help">Upload a clear JPG, PNG, or WEBP image. Large photos are resized before submission.</span>
             </div>
             <div class="evidence-box">
                 <div class="form-group full-width">
                     <label>Achievement Documents</label>
                     <input name="achievement_documents[]" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp" multiple>
-                    <span class="form-help">Upload up to 5 documents or images showing the nominee's achievements.</span>
+                    <span class="form-help">Upload up to 5 files under 2 MB each, or paste evidence links below.</span>
                 </div>
                 <div class="form-group full-width">
                     <label>Achievement Links</label>
                     <textarea name="achievement_links" rows="3" placeholder="Paste website, article, video, or social media links. Put each link on a new line."></textarea>
-                    <span class="form-help">Provide documents, links, or both. At least one evidence item is required.</span>
+                    <span class="form-help">Provide documents, links, or both. Paste up to 5 links; non-link text is ignored.</span>
                 </div>
             </div>
             <div class="form-submit">
@@ -403,7 +413,7 @@
 <div class="section-content" id="section-voting" style="display:none;">
     <h1 class="section-title">Voting</h1>
     <div class="about-body">
-        <p>Published nominees appear here when voting opens. Sign in, select a category, and vote once per category.</p>
+        <p>Approved nominees appear here when voting opens. Select a category and vote once per category.</p>
     </div>
     <div class="app-panel">
         <div class="form-group">

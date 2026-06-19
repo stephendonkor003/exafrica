@@ -17,6 +17,14 @@ Route::prefix('v1')->group(function () {
     Route::post('/auth/register', [AuthController::class, 'register']);
     Route::post('/auth/login', [AuthController::class, 'login']);
 
+    // Public read/vote routes for the landing page
+    Route::get('public/categories', [CategoryController::class, 'publicIndex']);
+    Route::get('public/nominees', [NomineeController::class, 'publicIndex']);
+    Route::get('public/nominees/{nominee}', [NomineeController::class, 'publicShow']);
+    Route::post('public/votes', [VoteController::class, 'store']);
+    Route::get('public/votes/stats/{category}', [VoteController::class, 'getCategoryStats']);
+    Route::get('public/votes/candidate/{nominee}', [VoteController::class, 'getCandidateStats']);
+
     // Protected routes
     Route::middleware('auth.api')->group(function () {
         // Auth

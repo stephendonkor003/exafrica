@@ -29,6 +29,7 @@
                 <button class="bo-nav-item active" type="button" data-bo-tab="dashboard"><i class="fa fa-chart-line"></i><span>Dashboard</span></button>
                 <button class="bo-nav-item" type="button" data-bo-tab="nominations"><i class="fa fa-clipboard-check"></i><span>Nominations</span></button>
                 <button class="bo-nav-item" type="button" data-bo-tab="nominees"><i class="fa fa-users"></i><span>Nominees</span></button>
+                <button class="bo-nav-item" type="button" data-bo-tab="voting"><i class="fa fa-square-poll-vertical"></i><span>Voting</span></button>
                 <button class="bo-nav-item" type="button" data-bo-tab="categories"><i class="fa fa-layer-group"></i><span>Categories</span></button>
                 <button class="bo-nav-item" type="button" data-bo-tab="phases"><i class="fa fa-calendar-days"></i><span>Phases</span></button>
                 <button class="bo-nav-item" type="button" data-bo-tab="users"><i class="fa fa-user-shield"></i><span>Users</span></button>
@@ -169,6 +170,90 @@
                         <tbody id="boNomineesBody"></tbody>
                     </table>
                 </div>
+            </section>
+
+            <section class="bo-panel" id="bo-panel-voting">
+                <div class="bo-panel-head">
+                    <div>
+                        <span class="bo-card-kicker">Voting Intelligence</span>
+                        <h2>Voting Statistics</h2>
+                    </div>
+                    <div class="bo-table-controls">
+                        <label class="bo-search"><i class="fa fa-magnifying-glass"></i><input data-bo-search="votingNominees" type="search" placeholder="Search nominees"></label>
+                        <label class="bo-search"><i class="fa fa-shield-halved"></i><input data-bo-search="voteAudit" type="search" placeholder="Search vote audit"></label>
+                        <select id="boVotingCategory">
+                            <option value="">All categories</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="bo-metric-grid bo-voting-metrics" id="boVotingMetricGrid"></div>
+
+                <div class="bo-voting-dashboard-grid">
+                    <article class="bo-card">
+                        <header>
+                            <div><span class="bo-card-kicker">Category Cards</span><h2>Category Vote Overview</h2></div>
+                            <span id="boVotingCardCount">0</span>
+                        </header>
+                        <div class="bo-voting-category-cards" id="boVotingCategoryCards"></div>
+                    </article>
+
+                    <article class="bo-card">
+                        <header>
+                            <div><span class="bo-card-kicker">Graphs</span><h2>Category Vote Graphs</h2></div>
+                        </header>
+                        <div class="bo-voting-graph" id="boVotingCategoryGraph"></div>
+                    </article>
+                </div>
+
+                <div class="bo-voting-grid">
+                    <article class="bo-card">
+                        <header>
+                            <div><span class="bo-card-kicker">Category Totals</span><h2>Votes by Category</h2></div>
+                            <span id="boVotingCategoryCount">0</span>
+                        </header>
+                        <div class="bo-table-wrap bo-table-wrap-compact">
+                            <table class="bo-table bo-voting-table">
+                                <thead><tr><th>Category</th><th>Nominees</th><th>Public</th><th>Judge</th><th>Total</th></tr></thead>
+                                <tbody id="boVotingCategoriesBody"></tbody>
+                            </table>
+                        </div>
+                    </article>
+
+                    <article class="bo-card">
+                        <header>
+                            <div><span class="bo-card-kicker">Nominee Totals</span><h2>Votes by Nominee</h2></div>
+                            <span id="boVotingNomineeCount">0</span>
+                        </header>
+                        <div class="bo-table-wrap bo-table-wrap-compact">
+                            <table class="bo-table bo-voting-table">
+                                <thead><tr><th>Nominee</th><th>Category</th><th>Status</th><th>Public</th><th>Judge</th><th>Total</th></tr></thead>
+                                <tbody id="boVotingNomineesBody"></tbody>
+                            </table>
+                        </div>
+                    </article>
+                </div>
+
+                <article class="bo-card bo-voting-rankings-card">
+                    <header>
+                        <div><span class="bo-card-kicker">Rankings</span><h2>Nominee Ranking by Category</h2></div>
+                        <span id="boVotingRankingCount">0</span>
+                    </header>
+                    <div class="bo-ranking-grid" id="boVotingRankingGrid"></div>
+                </article>
+
+                <article class="bo-card bo-vote-audit-card">
+                    <header>
+                        <div><span class="bo-card-kicker">Audit Trail</span><h2>Voting Records</h2></div>
+                        <span id="boVoteAuditCount">0</span>
+                    </header>
+                    <div class="bo-table-wrap bo-table-wrap-compact">
+                        <table class="bo-table bo-audit-table">
+                            <thead><tr><th>Date</th><th>Voter / Account</th><th>Nominee</th><th>Category</th><th>IP</th><th>Location</th><th>MAC / Device Key</th><th>Type</th></tr></thead>
+                            <tbody id="boVoteAuditBody"></tbody>
+                        </table>
+                    </div>
+                </article>
             </section>
 
             <section class="bo-panel" id="bo-panel-categories">

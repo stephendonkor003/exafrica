@@ -16,6 +16,8 @@
         arabic: 'ar',
     };
     const translateReloadGuardKey = 'ea_translate_reload_guard';
+    const maxBrowserUploadBytes = 1900 * 1024;
+    const maxProfileImageDimension = 1800;
 
     window.googleTranslateElementInit = function () {
         if (!window.google?.translate?.TranslateElement) return;
@@ -41,16 +43,21 @@
         user: JSON.parse(localStorage.getItem('ea_user') || 'null'),
         categories: [],
     };
+    let publicNominees = [];
+    let activeVoteNominee = null;
 
     function initBackendApp() {
         bindAuthForms();
         bindNominationForm();
         bindVotingControls();
+        bindPublicNomineeModal();
         bindBackOfficeControls();
         updateAuthUi();
+        loadCategories();
+        loadApprovedNominees();
 
         if (apiState.token) {
-            loadCurrentUser().finally(loadCategories);
+            loadCurrentUser();
         }
     }
 
@@ -167,14 +174,23 @@
         const signedIn = Boolean(apiState.token && apiState.user);
         const label = signedIn
             ? 'Signed in as ' + apiState.user.name + ' (' + apiState.user.email + ')'
-            : 'You are not signed in. Create an account before nominating or voting.';
+            : 'You are not signed in. Create an account before nominating.';
+        const votingLabel = signedIn
+            ? label
+            : 'Voting is open without an account. One vote per category is allowed per device and network.';
 
-        ['authStatus', 'votingAuthStatus', 'backofficeAuthStatus'].forEach(function (id) {
+        ['authStatus', 'backofficeAuthStatus'].forEach(function (id) {
             const el = document.getElementById(id);
             if (!el) return;
             el.textContent = label;
             el.classList.toggle('is-ok', signedIn);
         });
+
+        const votingStatus = document.getElementById('votingAuthStatus');
+        if (votingStatus) {
+            votingStatus.textContent = votingLabel;
+            votingStatus.classList.toggle('is-ok', true);
+        }
 
         const nominationStatus = document.getElementById('nominationAuthStatus');
         if (nominationStatus) {
@@ -183,7 +199,7 @@
             if (signedIn) {
                 nominationStatus.textContent = label;
             } else {
-                nominationStatus.innerHTML = '<span>You are not signed in. Create an account before nominating or voting.</span><button type="button" class="auth-status-action" id="nominationCreateAccountBtn"><i class="fa fa-user-plus" aria-hidden="true"></i><span>Create Account</span></button>';
+                nominationStatus.innerHTML = '<span>You are not signed in. Create an account before nominating.</span><button type="button" class="auth-status-action" id="nominationCreateAccountBtn"><i class="fa fa-user-plus" aria-hidden="true"></i><span>Create Account</span></button>';
                 document.getElementById('nominationCreateAccountBtn')?.addEventListener('click', function () {
                     showSection('account');
                 });
@@ -273,16 +289,11 @@
     }
 
     async function loadCategories() {
-        if (!apiState.token) {
-            populateCategorySelects([]);
-            return;
-        }
         try {
-            const payload = await apiRequest('/categories?per_page=100', { method: 'GET' });
+            const payload = await apiRequest('/public/categories?per_page=100', { method: 'GET' });
             apiState.categories = payload.data || [];
             populateCategorySelects(apiState.categories);
         } catch (error) {
-            if (error.status === 401) clearSession();
             populateCategorySelects([]);
         }
     }
@@ -294,7 +305,7 @@
             select.innerHTML = '';
             const placeholder = document.createElement('option');
             placeholder.value = '';
-            placeholder.textContent = categories.length ? 'Select a category' : 'Sign in to load categories';
+            placeholder.textContent = categories.length ? 'Select a category' : 'No categories available';
             select.appendChild(placeholder);
             categories.forEach(function (category) {
                 const option = document.createElement('option');
@@ -318,7 +329,7 @@
             }
             setMessage('nominationMessage', 'Saving nomination...', 'info');
             try {
-                const payload = nominationFormData(form);
+                const payload = await nominationFormData(form);
                 const response = await apiRequest('/nominations', {
                     method: 'POST',
                     body: payload,
@@ -332,20 +343,121 @@
         });
     }
 
-    function nominationFormData(form) {
+    async function nominationFormData(form) {
         const data = new FormData(form);
-        const links = String(data.get('achievement_links') || '')
-            .split(/\r\n|\r|\n|,/)
-            .map(function (link) { return link.trim(); })
-            .filter(Boolean);
+        const links = extractAchievementLinks(String(data.get('achievement_links') || ''));
 
         data.delete('achievement_links');
         links.forEach(function (link) {
             data.append('achievement_links[]', link);
         });
+
+        const profileImage = data.get('profile_image_file');
+        if (profileImage instanceof File && profileImage.size) {
+            const preparedImage = await prepareProfileImage(profileImage);
+            data.set('profile_image_file', preparedImage, preparedImage.name);
+        }
+
+        const largeEvidence = data.getAll('achievement_documents[]').find(function (file) {
+            return file instanceof File && file.size > maxBrowserUploadBytes;
+        });
+
+        if (largeEvidence) {
+            throw new Error('The achievement document "' + largeEvidence.name + '" is too large. Upload files under 2 MB or paste the evidence as a link.');
+        }
+
         data.append('device_fingerprint', getDeviceFingerprint());
 
         return data;
+    }
+
+    function normalizeExternalUrl(value) {
+        const text = String(value || '').trim();
+        if (!text) return '';
+        if (/^[a-z][a-z0-9+.-]*:\/\//i.test(text)) return text;
+        if (/^(www\.|[^\s@]+\.[^\s@]+)/i.test(text)) return 'https://' + text;
+        return text;
+    }
+
+    function extractAchievementLinks(value) {
+        const seen = new Set();
+        const links = [];
+        const urlPattern = /(?:https?:\/\/|www\.)[^\s,;<>]+|(?<!@)\b[a-z0-9][a-z0-9.-]+\.[a-z]{2,}(?:\/[^\s,;<>]*)?/gi;
+
+        String(value || '').split(/\r\n|\r|\n/).forEach(function (line) {
+            const matches = line.match(urlPattern) || [];
+            matches.forEach(function (match) {
+                const normalized = normalizeExternalUrl(match.replace(/[.,;:!?)"\]}]+$/g, ''));
+                if (!normalized || seen.has(normalized)) return;
+                seen.add(normalized);
+                links.push(normalized);
+            });
+        });
+
+        return links.slice(0, 5);
+    }
+
+    async function prepareProfileImage(file) {
+        if (file.size <= maxBrowserUploadBytes) return file;
+
+        if (!/^image\/(jpeg|jpg|png|webp)$/i.test(file.type)) {
+            throw new Error('The profile image is too large. Use a JPG, PNG, or WEBP image under 2 MB.');
+        }
+
+        try {
+            const image = await loadImageForCompression(file);
+            const largestSide = Math.max(image.width, image.height);
+            const scale = Math.min(1, maxProfileImageDimension / largestSide);
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(image.width * scale));
+            canvas.height = Math.max(1, Math.round(image.height * scale));
+
+            const context = canvas.getContext('2d');
+            context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+            let blob = null;
+            let quality = 0.84;
+            do {
+                blob = await canvasToBlob(canvas, 'image/jpeg', quality);
+                quality -= 0.08;
+            } while (blob && blob.size > maxBrowserUploadBytes && quality >= 0.58);
+
+            if (!blob || blob.size > maxBrowserUploadBytes) {
+                throw new Error('The profile image is too large. Please choose a smaller JPG, PNG, or WEBP file.');
+            }
+
+            const safeName = file.name.replace(/\.[^.]+$/, '') || 'profile-image';
+            return new File([blob], safeName + '.jpg', {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+            });
+        } catch (error) {
+            if (error?.message) throw error;
+            throw new Error('The profile image could not be prepared. Please choose a JPG, PNG, or WEBP image under 2 MB.');
+        }
+    }
+
+    function loadImageForCompression(file) {
+        return new Promise(function (resolve, reject) {
+            const image = new Image();
+            const url = URL.createObjectURL(file);
+
+            image.onload = function () {
+                URL.revokeObjectURL(url);
+                resolve(image);
+            };
+            image.onerror = function () {
+                URL.revokeObjectURL(url);
+                reject(new Error('The profile image could not be read. Please choose a JPG, PNG, or WEBP image.'));
+            };
+            image.src = url;
+        });
+    }
+
+    function canvasToBlob(canvas, type, quality) {
+        return new Promise(function (resolve) {
+            canvas.toBlob(resolve, type, quality);
+        });
     }
 
     function showNominationSuccessPopup(referenceCode) {
@@ -390,22 +502,96 @@
         if (refreshBtn) refreshBtn.addEventListener('click', loadNominees);
     }
 
+    function bindPublicNomineeModal() {
+        const modal = document.getElementById('nomineeVoteModal');
+        if (!modal) return;
+
+        document.getElementById('nomineeVoteClose')?.addEventListener('click', closePublicNomineeModal);
+        document.getElementById('nomineeVoteSubmit')?.addEventListener('click', async function () {
+            if (!activeVoteNominee) return;
+            await submitVote(activeVoteNominee.id, 'nomineeVoteMessage');
+        });
+
+        modal.addEventListener('click', function (event) {
+            if (event.target === modal) closePublicNomineeModal();
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && modal.classList.contains('active')) {
+                closePublicNomineeModal();
+            }
+        });
+    }
+
+    async function loadApprovedNominees() {
+        const strip = document.getElementById('approvedNominationStrip');
+        if (!strip) return;
+
+        strip.innerHTML = '<div class="empty-state">Loading approved nominations...</div>';
+
+        try {
+            const payload = await apiRequest('/public/nominees?per_page=60', { method: 'GET' });
+            publicNominees = payload.data || [];
+            renderApprovedNominationStrip(publicNominees);
+        } catch (error) {
+            strip.innerHTML = '<div class="empty-state">' + escapeHtml(formatError(error)) + '</div>';
+        }
+    }
+
+    function renderApprovedNominationStrip(nominees) {
+        const strip = document.getElementById('approvedNominationStrip');
+        if (!strip) return;
+
+        if (!nominees.length) {
+            strip.innerHTML = '<div class="empty-state">No approved nominations yet.</div>';
+            return;
+        }
+
+        const baseItems = nominees.slice();
+        while (baseItems.length < 4) {
+            baseItems.push(...nominees);
+        }
+
+        const loopItems = baseItems.concat(baseItems);
+        const duration = Math.max(28, baseItems.length * 7);
+
+        strip.innerHTML = '<div class="nomination-marquee-track" style="--marquee-duration:' + duration + 's;">' +
+            loopItems.map(renderApprovedNomineeCard).join('') +
+            '</div>';
+
+        strip.querySelectorAll('[data-public-nominee-id]').forEach(function (card) {
+            card.addEventListener('click', function () {
+                const nominee = findPublicNominee(card.dataset.publicNomineeId);
+                if (nominee) openPublicNomineeModal(nominee);
+            });
+        });
+    }
+
+    function renderApprovedNomineeCard(nominee) {
+        const image = nomineeImage(nominee);
+        const category = nomineeCategoryName(nominee);
+
+        return '<button type="button" class="approved-nominee-card" data-public-nominee-id="' + nominee.id + '">' +
+            '<span class="approved-nominee-image"><img src="' + escapeHtml(image) + '" alt="' + escapeHtml(nominee.full_name) + '"><span class="approved-nominee-hover">Vote Now</span></span>' +
+            '<span class="approved-nominee-details"><strong>' + escapeHtml(nominee.full_name) + '</strong><span>' + escapeHtml(category) + '</span></span>' +
+            '</button>';
+    }
+
     async function loadNominees() {
         const grid = document.getElementById('nomineeGrid');
         const categorySelect = document.getElementById('votingCategory');
         if (!grid || !categorySelect) return;
-        if (!apiState.token) {
-            grid.innerHTML = '<div class="empty-state">Sign in to view nominees and vote.</div>';
-            return;
-        }
+
         if (!categorySelect.value) {
-            grid.innerHTML = '<div class="empty-state">Choose a category to view published nominees.</div>';
+            grid.innerHTML = '<div class="empty-state">Choose a category to view approved nominees.</div>';
             return;
         }
+
         grid.innerHTML = '<div class="empty-state">Loading nominees...</div>';
+
         try {
-            const query = '?status=published&category_id=' + encodeURIComponent(categorySelect.value);
-            const payload = await apiRequest('/nominees' + query, { method: 'GET' });
+            const query = '?per_page=100&category_id=' + encodeURIComponent(categorySelect.value);
+            const payload = await apiRequest('/public/nominees' + query, { method: 'GET' });
             renderNominees(payload.data || []);
         } catch (error) {
             grid.innerHTML = '<div class="empty-state">' + escapeHtml(formatError(error)) + '</div>';
@@ -416,33 +602,146 @@
         const grid = document.getElementById('nomineeGrid');
         if (!grid) return;
         if (!nominees.length) {
-            grid.innerHTML = '<div class="empty-state">No published nominees yet for this category.</div>';
+            grid.innerHTML = '<div class="empty-state">No approved nominees yet for this category.</div>';
             return;
         }
+        rememberPublicNominees(nominees);
         grid.innerHTML = nominees.map(function (nominee) {
-            const image = nominee.profile_image || 'https://placehold.co/320x220/4A1628/F5A623?text=Nominee';
+            const image = nomineeImage(nominee);
             const country = nominee.country ? escapeHtml(nominee.country) + ' - ' : '';
-            return '<article class="nominee-card"><img src="' + escapeHtml(image) + '" alt="' + escapeHtml(nominee.full_name) + '"><div class="nominee-card-body"><h3>' + escapeHtml(nominee.full_name) + '</h3><p>' + escapeHtml(nominee.bio || 'No biography provided yet.') + '</p><div class="nominee-meta"><span>' + country + Number(nominee.vote_count || 0) + ' votes</span></div><button type="button" class="btn-submit vote-btn" data-nominee-id="' + nominee.id + '">Vote</button></div></article>';
+            return '<article class="nominee-card voting-nominee-card" data-public-nominee-id="' + nominee.id + '" tabindex="0">' +
+                '<div class="nominee-card-image"><img src="' + escapeHtml(image) + '" alt="' + escapeHtml(nominee.full_name) + '"><span class="approved-nominee-hover">Vote Now</span></div>' +
+                '<div class="nominee-card-body"><h3>' + escapeHtml(nominee.full_name) + '</h3><p>' + escapeHtml(truncateText(nominee.bio || 'No biography provided yet.', 150)) + '</p><div class="nominee-meta"><span>' + country + Number(nominee.vote_count || 0) + ' votes</span></div><button type="button" class="btn-submit vote-btn" data-nominee-id="' + nominee.id + '">View &amp; Vote</button></div>' +
+                '</article>';
         }).join('');
+
+        grid.querySelectorAll('[data-public-nominee-id]').forEach(function (card) {
+            card.addEventListener('click', function (event) {
+                if (event.target.closest('.vote-btn')) return;
+                const nominee = findPublicNominee(card.dataset.publicNomineeId);
+                if (nominee) openPublicNomineeModal(nominee);
+            });
+            card.addEventListener('keydown', function (event) {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                const nominee = findPublicNominee(card.dataset.publicNomineeId);
+                if (nominee) openPublicNomineeModal(nominee);
+            });
+        });
+
         grid.querySelectorAll('.vote-btn').forEach(function (button) {
-            button.addEventListener('click', async function () {
-                await submitVote(button.dataset.nomineeId);
+            button.addEventListener('click', function () {
+                const nominee = findPublicNominee(button.dataset.nomineeId);
+                if (nominee) openPublicNomineeModal(nominee);
             });
         });
     }
 
-    async function submitVote(nomineeId) {
-        setMessage('voteMessage', 'Saving vote...', 'info');
+    async function submitVote(nomineeId, messageId) {
+        const targetMessageId = messageId || 'voteMessage';
+        setMessage(targetMessageId, 'Saving vote...', 'info');
         try {
-            const payload = await apiRequest('/votes', {
+            const payload = await apiRequest('/public/votes', {
                 method: 'POST',
-                body: JSON.stringify({ nominee_id: nomineeId }),
+                body: JSON.stringify({
+                    nominee_id: nomineeId,
+                    device_id: getDeviceFingerprint(),
+                }),
             });
-            setMessage('voteMessage', 'Vote saved successfully. Vote #' + payload.data.vote_id + '.', 'success');
-            await loadNominees();
+            setMessage(targetMessageId, 'Vote saved successfully. Vote #' + payload.data.vote_id + '.', 'success');
+            setMessage('nominationVoteMessage', 'Vote saved successfully.', 'success');
+            setMessage('voteMessage', 'Vote saved successfully.', 'success');
+            await loadApprovedNominees();
+            if (currentSection === 'voting') await loadNominees();
         } catch (error) {
-            setMessage('voteMessage', formatError(error), 'error');
+            setMessage(targetMessageId, formatError(error), 'error');
         }
+    }
+
+    function openPublicNomineeModal(nominee) {
+        const modal = document.getElementById('nomineeVoteModal');
+        if (!modal) return;
+
+        activeVoteNominee = nominee;
+
+        const image = nomineeImage(nominee);
+        const imageEl = document.getElementById('nomineeVoteImage');
+        const categoryEl = document.getElementById('nomineeVoteCategory');
+        const titleEl = document.getElementById('nomineeVoteTitle');
+        const metaEl = document.getElementById('nomineeVoteMeta');
+        const bioEl = document.getElementById('nomineeVoteBio');
+        const impactWrap = document.getElementById('nomineeVoteImpactWrap');
+        const impactEl = document.getElementById('nomineeVoteImpact');
+
+        if (imageEl) {
+            imageEl.src = image;
+            imageEl.alt = nominee.full_name || 'Nominee';
+        }
+        if (categoryEl) categoryEl.textContent = nomineeCategoryName(nominee);
+        if (titleEl) titleEl.textContent = nominee.full_name || 'Nominee';
+        if (metaEl) {
+            const meta = [
+                nominee.country || '',
+                Number(nominee.vote_count || 0) + ' votes',
+            ].filter(Boolean);
+            metaEl.innerHTML = meta.map(function (item) {
+                return '<span>' + escapeHtml(item) + '</span>';
+            }).join('');
+        }
+        if (bioEl) bioEl.textContent = nominee.bio || 'No biography provided yet.';
+
+        if (impactWrap && impactEl) {
+            const impact = nominee.nomination_reason || '';
+            impactEl.textContent = impact;
+            impactWrap.style.display = impact ? '' : 'none';
+        }
+
+        setMessage('nomineeVoteMessage', '', '');
+        modal.classList.add('active');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closePublicNomineeModal() {
+        const modal = document.getElementById('nomineeVoteModal');
+        if (!modal) return;
+
+        modal.classList.remove('active');
+        modal.setAttribute('aria-hidden', 'true');
+        activeVoteNominee = null;
+        document.body.style.overflow = '';
+    }
+
+    function rememberPublicNominees(nominees) {
+        const byId = new Map(publicNominees.map(function (nominee) {
+            return [String(nominee.id), nominee];
+        }));
+
+        nominees.forEach(function (nominee) {
+            byId.set(String(nominee.id), nominee);
+        });
+
+        publicNominees = Array.from(byId.values());
+    }
+
+    function findPublicNominee(id) {
+        return publicNominees.find(function (nominee) {
+            return String(nominee.id) === String(id);
+        });
+    }
+
+    function nomineeImage(nominee) {
+        return nominee?.profile_image || 'https://placehold.co/420x520/4A1628/F5A623?text=Nominee';
+    }
+
+    function nomineeCategoryName(nominee) {
+        return nominee?.category?.name || 'Extraordinary Africans';
+    }
+
+    function truncateText(value, maxLength) {
+        const text = String(value || '').trim();
+        if (text.length <= maxLength) return text;
+        return text.slice(0, maxLength - 3).trim() + '...';
     }
 
     function formatError(error) {
@@ -913,6 +1212,10 @@
 
         if (sectionId === 'nominations' || sectionId === 'voting') {
             loadCategories();
+        }
+
+        if (sectionId === 'nominations') {
+            loadApprovedNominees();
         }
 
         if (sectionId === 'voting') {
