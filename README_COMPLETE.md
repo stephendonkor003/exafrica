@@ -139,12 +139,11 @@ composer install
 # 3. Run database migrations
 php artisan migrate
 
-# 4. Seed initial data (roles & phases)
-php artisan db:seed --class=RoleAndPhaseSeeder
+# 4. Add INITIAL_SUPER_ADMIN_* values to .env, then clear cached config
+php artisan config:clear
 
-# 5. Create admin account
-php artisan tinker
-# Then paste the code from SETUP_GUIDE.md
+# 5. Seed initial data (roles, categories, phases, optional admin)
+php artisan db:seed --class=RoleAndPhaseSeeder
 
 # 6. Start development server
 php artisan serve

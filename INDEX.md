@@ -20,7 +20,7 @@ Welcome to the Extraordinary African Event Platform backend! This is a complete,
 ### 2. **SETUP_GUIDE.md** - Installation & Configuration
    - Step-by-step setup instructions
    - Database configuration
-   - Creating test admin account
+   - Configuring the initial back office admin
    - Project structure overview
    - Troubleshooting guide
    - 👉 **Read this to get the system running**
@@ -63,12 +63,11 @@ composer install
 # 3. Run migrations
 php artisan migrate
 
-# 4. Seed initial data
-php artisan db:seed --class=RoleAndPhaseSeeder
+# 4. Add INITIAL_SUPER_ADMIN_* values to .env, then clear cached config
+php artisan config:clear
 
-# 5. Create admin account
-php artisan tinker
-# Paste code from SETUP_GUIDE.md
+# 5. Seed initial data
+php artisan db:seed --class=RoleAndPhaseSeeder
 
 # 6. Start server
 php artisan serve

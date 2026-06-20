@@ -325,15 +325,11 @@ class BackOfficeFlowTest extends TestCase
 
     private function seedBackOffice(): void
     {
-        foreach ([
-            'INITIAL_SUPER_ADMIN_NAME' => self::ADMIN_NAME,
-            'INITIAL_SUPER_ADMIN_EMAIL' => self::ADMIN_EMAIL,
-            'INITIAL_SUPER_ADMIN_PASSWORD' => self::ADMIN_PASSWORD,
-        ] as $key => $value) {
-            putenv($key.'='.$value);
-            $_ENV[$key] = $value;
-            $_SERVER[$key] = $value;
-        }
+        config([
+            'security.initial_super_admin.name' => self::ADMIN_NAME,
+            'security.initial_super_admin.email' => self::ADMIN_EMAIL,
+            'security.initial_super_admin.password' => self::ADMIN_PASSWORD,
+        ]);
 
         $this->seed(RoleAndPhaseSeeder::class);
     }

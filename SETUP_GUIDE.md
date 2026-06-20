@@ -66,37 +66,33 @@ composer install
 php artisan migrate
 ```
 
-### Step 4: Seed Initial Data
+### Step 4: Configure the Initial Back Office Admin
+Before seeding, add these values to your `.env` file if you want the seeder to create an active super admin login:
+
+```env
+INITIAL_SUPER_ADMIN_NAME="Admin User"
+INITIAL_SUPER_ADMIN_EMAIL=admin@example.com
+INITIAL_SUPER_ADMIN_PASSWORD="ChangeThisToAStrongPassword123!"
+```
+
+Use your real admin email and a password with at least 12 characters. If these values are left blank, seeding still succeeds and creates only an inactive system user for seeded records. You can set the values later and rerun the seeder to create the admin.
+
+After editing `.env`, clear cached config:
+
+```bash
+php artisan config:clear
+```
+
+### Step 5: Seed Initial Data
 ```bash
 php artisan db:seed --class=RoleAndPhaseSeeder
 ```
 
 This creates:
 - 6 roles (super_admin, evaluator, voting_analyst, judge, committee_member, voter)
+- 9 award categories
 - 4 voting phases (nomination, evaluation, voting, results)
-
-### Step 5: Create a Test Admin Account
-```bash
-php artisan tinker
-```
-
-Then run:
-```php
-use App\Models\User;
-use App\Models\Role;
-
-$role = Role::where('slug', 'super_admin')->first();
-$user = User::create([
-    'name' => 'Admin User',
-    'email' => 'admin@test.com',
-    'password' => bcrypt('password'),
-    'role_id' => $role->id,
-    'is_active' => true,
-]);
-
-echo "Admin created with email: admin@test.com, password: password";
-exit;
-```
+- An active super admin when `INITIAL_SUPER_ADMIN_EMAIL` and `INITIAL_SUPER_ADMIN_PASSWORD` are set
 
 ### Step 6: Start the Development Server
 ```bash

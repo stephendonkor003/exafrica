@@ -41,4 +41,17 @@ return [
         'backoffice_expiration_minutes' => (int) env('BACKOFFICE_TOKEN_EXPIRATION_MINUTES', 120),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Initial Back Office Admin
+    |--------------------------------------------------------------------------
+    */
+
+    'initial_super_admin' => [
+        'name' => env('INITIAL_SUPER_ADMIN_NAME', 'Initial Super Admin'),
+        'email' => env('INITIAL_SUPER_ADMIN_EMAIL'),
+        'password' => env('INITIAL_SUPER_ADMIN_PASSWORD'),
+        'system_email' => env('SYSTEM_SEED_USER_EMAIL', 'system-seeder@example.invalid'),
+    ],
+
 ];

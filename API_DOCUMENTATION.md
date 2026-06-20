@@ -451,26 +451,14 @@ Common HTTP Status Codes:
 ```bash
 cd c:\laragon\www\Web\ Project\extraordinary-african
 composer install
-php artisan migrate --seed
+php artisan migrate
+# Add INITIAL_SUPER_ADMIN_* values to .env, then clear cached config
+php artisan config:clear
+php artisan db:seed --class=RoleAndPhaseSeeder
 php artisan serve
 ```
 
-### 2. Create Test Admin
-```bash
-php artisan tinker
-```
-
-```php
-$role = Role::where('slug', 'super_admin')->first();
-User::create([
-  'name' => 'Admin',
-  'email' => 'admin@test.com',
-  'password' => bcrypt('password'),
-  'role_id' => $role->id,
-]);
-```
-
-### 3. Login and Test
+### 2. Login and Test
 Use Postman or cURL to test endpoints with the token from login response.
 
 ---

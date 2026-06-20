@@ -13,6 +13,9 @@ Expected tables: roles, users, categories, nominees, nominations, voting_phases,
 
 ### ✅ Seed Data Loaded
 ```bash
+# Optional: set INITIAL_SUPER_ADMIN_EMAIL and INITIAL_SUPER_ADMIN_PASSWORD in .env first.
+php artisan config:clear
+
 php artisan db:seed --class=RoleAndPhaseSeeder
 # Check:
 Role::all()                 # Should have 6 roles
