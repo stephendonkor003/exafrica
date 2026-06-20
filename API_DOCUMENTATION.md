@@ -452,8 +452,6 @@ Common HTTP Status Codes:
 cd c:\laragon\www\Web\ Project\extraordinary-african
 composer install
 php artisan migrate
-# Add INITIAL_SUPER_ADMIN_* values to .env, then clear cached config
-php artisan config:clear
 php artisan db:seed --class=RoleAndPhaseSeeder
 php artisan serve
 ```

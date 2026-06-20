@@ -139,13 +139,10 @@ composer install
 # 3. Run database migrations
 php artisan migrate
 
-# 4. Add INITIAL_SUPER_ADMIN_* values to .env, then clear cached config
-php artisan config:clear
-
-# 5. Seed initial data (roles, categories, phases, optional admin)
+# 4. Seed initial data (roles, categories, phases, super admin)
 php artisan db:seed --class=RoleAndPhaseSeeder
 
-# 6. Start development server
+# 5. Start development server
 php artisan serve
 
 # 7. Access the API

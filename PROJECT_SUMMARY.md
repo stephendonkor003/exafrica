@@ -265,8 +265,6 @@ extraordinary-african/
 cd "c:\laragon\www\Web Project\extraordinary-african"
 composer install
 php artisan migrate
-# Add INITIAL_SUPER_ADMIN_* values to .env, then clear cached config
-php artisan config:clear
 php artisan db:seed --class=RoleAndPhaseSeeder
 php artisan serve
 ```
@@ -451,11 +449,9 @@ All endpoints can be tested with:
 
 ### To Launch:
 1. Run migrations: `php artisan migrate`
-2. Set `INITIAL_SUPER_ADMIN_EMAIL` and `INITIAL_SUPER_ADMIN_PASSWORD` in `.env`
-3. Clear config cache: `php artisan config:clear`
-4. Seed data: `php artisan db:seed --class=RoleAndPhaseSeeder`
-5. Start server: `php artisan serve`
-6. Access API: `http://localhost:8000/api/v1`
+2. Seed data and the super admin: `php artisan db:seed --class=RoleAndPhaseSeeder`
+3. Start server: `php artisan serve`
+4. Access API: `http://localhost:8000/api/v1`
 
 ### To Deploy:
 1. Update `.env` for production

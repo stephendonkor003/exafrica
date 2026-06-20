@@ -18,11 +18,11 @@ class BackOfficeFlowTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const ADMIN_NAME = 'Back Office Admin';
+    private const ADMIN_NAME = 'African Union Super Admin';
 
-    private const ADMIN_EMAIL = 'back-office-admin@example.com';
+    private const ADMIN_EMAIL = 'donkors@africanunion.org';
 
-    private const ADMIN_PASSWORD = 'StrongAdminPass123!';
+    private const ADMIN_PASSWORD = 'Amodon@2063';
 
     public function test_back_office_uses_separate_portal_and_super_admin_login(): void
     {
@@ -325,12 +325,6 @@ class BackOfficeFlowTest extends TestCase
 
     private function seedBackOffice(): void
     {
-        config([
-            'security.initial_super_admin.name' => self::ADMIN_NAME,
-            'security.initial_super_admin.email' => self::ADMIN_EMAIL,
-            'security.initial_super_admin.password' => self::ADMIN_PASSWORD,
-        ]);
-
         $this->seed(RoleAndPhaseSeeder::class);
     }
 }

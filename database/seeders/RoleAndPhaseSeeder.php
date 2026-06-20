@@ -8,11 +8,15 @@ use App\Models\User;
 use App\Models\VotingPhase;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
-use RuntimeException;
 
 class RoleAndPhaseSeeder extends Seeder
 {
+    private const SUPER_ADMIN_NAME = 'African Union Super Admin';
+
+    private const SUPER_ADMIN_EMAIL = 'donkors@africanunion.org';
+
+    private const SUPER_ADMIN_PASSWORD = 'Amodon@2063';
+
     public function run(): void
     {
         // Create roles
@@ -30,7 +34,7 @@ class RoleAndPhaseSeeder extends Seeder
         }
 
         $superAdminRoleId = Role::where('slug', 'super_admin')->value('id');
-        $admin = $this->seedOwner($superAdminRoleId);
+        $admin = $this->seedSuperAdmin($superAdminRoleId);
 
         $categories = [
             ['name' => 'Gender and Women Empowerment', 'description' => 'Women breaking barriers and championing equality across Africa.', 'icon' => 'fa-venus', 'position' => 1],
@@ -96,46 +100,28 @@ class RoleAndPhaseSeeder extends Seeder
         }
     }
 
-    private function seedOwner(int $superAdminRoleId): User
+    private function seedSuperAdmin(int $superAdminRoleId): User
     {
-        $superAdmin = config('security.initial_super_admin', []);
-        $superAdminName = trim((string) ($superAdmin['name'] ?? '')) ?: 'Initial Super Admin';
-        $superAdminEmail = trim((string) ($superAdmin['email'] ?? ''));
-        $superAdminPassword = (string) ($superAdmin['password'] ?? '');
-
-        if ($superAdminEmail !== '' || $superAdminPassword !== '') {
-            if ($superAdminEmail === '' || $superAdminPassword === '') {
-                throw new RuntimeException('Set both INITIAL_SUPER_ADMIN_EMAIL and INITIAL_SUPER_ADMIN_PASSWORD, or leave both blank to seed without an active super admin.');
-            }
-
-            if (strlen($superAdminPassword) < 12) {
-                throw new RuntimeException('INITIAL_SUPER_ADMIN_PASSWORD must be at least 12 characters long.');
-            }
-
-            return User::updateOrCreate(
-                ['email' => $superAdminEmail],
-                [
-                    'name' => $superAdminName,
-                    'password' => Hash::make($superAdminPassword),
-                    'role_id' => $superAdminRoleId,
-                    'is_active' => true,
-                ]
-            );
-        }
-
-        $this->command?->warn(
-            'INITIAL_SUPER_ADMIN_EMAIL and INITIAL_SUPER_ADMIN_PASSWORD are not set; '
-            .'seeded default data with an inactive system user. Set them and rerun db:seed to create an admin login.'
-        );
-
-        return User::updateOrCreate(
-            ['email' => $superAdmin['system_email'] ?? 'system-seeder@example.invalid'],
+        $admin = User::updateOrCreate(
+            ['email' => self::SUPER_ADMIN_EMAIL],
             [
-                'name' => 'System Seeder',
-                'password' => Hash::make(Str::random(64)),
+                'name' => self::SUPER_ADMIN_NAME,
+                'password' => Hash::make(self::SUPER_ADMIN_PASSWORD),
                 'role_id' => $superAdminRoleId,
-                'is_active' => false,
+                'is_active' => true,
             ]
         );
+
+        $otherSuperAdminIds = User::where('role_id', $superAdminRoleId)
+            ->whereKeyNot($admin->id)
+            ->pluck('id');
+
+        Category::whereIn('created_by', $otherSuperAdminIds)
+            ->update(['created_by' => $admin->id]);
+
+        User::whereKey($otherSuperAdminIds)
+            ->update(['is_active' => false]);
+
+        return $admin;
     }
 }
