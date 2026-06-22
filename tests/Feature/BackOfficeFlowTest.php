@@ -24,6 +24,10 @@ class BackOfficeFlowTest extends TestCase
 
     private const ADMIN_PASSWORD = 'Amodon@2063';
 
+    private const SECONDARY_ADMIN_EMAIL = 'jnadunga@gmail.com';
+
+    private const SECONDARY_ADMIN_PASSWORD = 'Ex2026@Au';
+
     public function test_back_office_uses_separate_portal_and_super_admin_login(): void
     {
         $this->seedBackOffice();
@@ -68,6 +72,15 @@ class BackOfficeFlowTest extends TestCase
 
         $this->get('/back-office')
             ->assertRedirect(route('backoffice.login'));
+
+        $this->post('/back-office/login', [
+            'email' => self::SECONDARY_ADMIN_EMAIL,
+            'password' => self::SECONDARY_ADMIN_PASSWORD,
+        ])->assertRedirect(route('backoffice.dashboard'));
+
+        $this->get('/back-office')
+            ->assertOk()
+            ->assertSee('Operations Console');
     }
 
     public function test_voter_cannot_login_to_back_office_portal(): void

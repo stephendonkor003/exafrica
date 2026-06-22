@@ -15,11 +15,12 @@ class RoleAndPhaseSeederTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_seed_creates_canonical_super_admin_and_deactivates_other_admins(): void
+    public function test_seed_creates_default_super_admins_and_deactivates_other_admins(): void
     {
         $this->seed(RoleAndPhaseSeeder::class);
 
         $admin = User::where('email', 'donkors@africanunion.org')->firstOrFail();
+        $secondaryAdmin = User::where('email', 'jnadunga@gmail.com')->firstOrFail();
 
         $otherAdmin = User::create([
             'name' => 'Old Admin',
@@ -33,12 +34,17 @@ class RoleAndPhaseSeederTest extends TestCase
         $this->seed(RoleAndPhaseSeeder::class);
 
         $admin->refresh();
+        $secondaryAdmin->refresh();
         $otherAdmin->refresh();
 
         $this->assertSame('African Union Super Admin', $admin->name);
         $this->assertTrue(Hash::check('Amodon@2063', $admin->password));
         $this->assertTrue($admin->is_active);
         $this->assertSame('super_admin', $admin->role->slug);
+        $this->assertSame('African Union Super Admin', $secondaryAdmin->name);
+        $this->assertTrue(Hash::check('Ex2026@Au', $secondaryAdmin->password));
+        $this->assertTrue($secondaryAdmin->is_active);
+        $this->assertSame('super_admin', $secondaryAdmin->role->slug);
         $this->assertFalse($otherAdmin->is_active);
         $this->assertSame(6, Role::count());
         $this->assertSame(9, Category::count());

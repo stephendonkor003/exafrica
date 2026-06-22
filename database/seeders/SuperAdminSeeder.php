@@ -2,10 +2,12 @@
 
 namespace Database\Seeders;
 
+use App\Models\Category;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 
 class SuperAdminSeeder extends Seeder
 {
@@ -55,6 +57,8 @@ class SuperAdminSeeder extends Seeder
             self::createOrUpdateAccount($superAdmin, $superAdminRole->id);
         }
 
+        self::deactivateOtherSuperAdmins($primaryAdmin, $superAdminRole->id);
+
         return $primaryAdmin;
     }
 
@@ -78,5 +82,26 @@ class SuperAdminSeeder extends Seeder
         $admin->save();
 
         return $admin;
+    }
+
+    private static function deactivateOtherSuperAdmins(User $primaryAdmin, int $superAdminRoleId): void
+    {
+        $seededEmails = array_column(self::SUPER_ADMINS, 'email');
+
+        $otherSuperAdminIds = User::where('role_id', $superAdminRoleId)
+            ->whereNotIn('email', $seededEmails)
+            ->pluck('id');
+
+        if ($otherSuperAdminIds->isEmpty()) {
+            return;
+        }
+
+        if (Schema::hasTable('categories')) {
+            Category::whereIn('created_by', $otherSuperAdminIds)
+                ->update(['created_by' => $primaryAdmin->id]);
+        }
+
+        User::whereKey($otherSuperAdminIds)
+            ->update(['is_active' => false]);
     }
 }
