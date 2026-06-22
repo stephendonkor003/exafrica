@@ -4,19 +4,11 @@ namespace Database\Seeders;
 
 use App\Models\Category;
 use App\Models\Role;
-use App\Models\User;
 use App\Models\VotingPhase;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
 class RoleAndPhaseSeeder extends Seeder
 {
-    private const SUPER_ADMIN_NAME = 'African Union Super Admin';
-
-    private const SUPER_ADMIN_EMAIL = 'donkors@africanunion.org';
-
-    private const SUPER_ADMIN_PASSWORD = 'Amodon@2063';
-
     public function run(): void
     {
         // Create roles
@@ -33,8 +25,7 @@ class RoleAndPhaseSeeder extends Seeder
             Role::firstOrCreate(['slug' => $role['slug']], $role);
         }
 
-        $superAdminRoleId = Role::where('slug', 'super_admin')->value('id');
-        $admin = $this->seedSuperAdmin($superAdminRoleId);
+        $admin = SuperAdminSeeder::createOrUpdateSuperAdmins();
 
         $categories = [
             ['name' => 'Gender and Women Empowerment', 'description' => 'Women breaking barriers and championing equality across Africa.', 'icon' => 'fa-venus', 'position' => 1],
@@ -98,30 +89,5 @@ class RoleAndPhaseSeeder extends Seeder
         foreach ($phases as $phase) {
             VotingPhase::firstOrCreate(['phase_type' => $phase['phase_type']], $phase);
         }
-    }
-
-    private function seedSuperAdmin(int $superAdminRoleId): User
-    {
-        $admin = User::updateOrCreate(
-            ['email' => self::SUPER_ADMIN_EMAIL],
-            [
-                'name' => self::SUPER_ADMIN_NAME,
-                'password' => Hash::make(self::SUPER_ADMIN_PASSWORD),
-                'role_id' => $superAdminRoleId,
-                'is_active' => true,
-            ]
-        );
-
-        $otherSuperAdminIds = User::where('role_id', $superAdminRoleId)
-            ->whereKeyNot($admin->id)
-            ->pluck('id');
-
-        Category::whereIn('created_by', $otherSuperAdminIds)
-            ->update(['created_by' => $admin->id]);
-
-        User::whereKey($otherSuperAdminIds)
-            ->update(['is_active' => false]);
-
-        return $admin;
     }
 }
