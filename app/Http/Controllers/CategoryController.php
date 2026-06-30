@@ -16,7 +16,9 @@ class CategoryController extends BaseController
             ->orderBy('name')
             ->paginate($perPage);
 
-        return $this->paginatedResponse($categories, 'Categories retrieved successfully');
+        return $this->paginatedResponse($categories, 'Categories retrieved successfully')
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache');
     }
 
     public function index(Request $request)
@@ -28,7 +30,9 @@ class CategoryController extends BaseController
             ->orderBy('name')
             ->paginate($perPage);
 
-        return $this->paginatedResponse($categories, 'Categories retrieved successfully');
+        return $this->paginatedResponse($categories, 'Categories retrieved successfully')
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache');
     }
 
     public function store(Request $request)

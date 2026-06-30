@@ -156,9 +156,13 @@ class DashboardController extends BaseController
 
         $judgeVotes = Vote::where('judge_id', auth()->id())->count();
 
-        $categories = Category::with(['nominees' => function ($query) {
+        $categories = Category::where('is_active', true)
+            ->with(['nominees' => function ($query) {
             $query->where('status', 'published');
-        }])->get();
+            }])
+            ->orderBy('position')
+            ->orderBy('name')
+            ->get();
 
         return $this->successResponse([
             'judge_info' => [
@@ -180,11 +184,15 @@ class DashboardController extends BaseController
             return $this->errorResponse('Voting is not currently active', null, 403);
         }
 
-        $categories = Category::with(['nominees' => function ($query) {
+        $categories = Category::where('is_active', true)
+            ->with(['nominees' => function ($query) {
             $query->where('status', 'published')
                 ->with('voteStatistic')
                 ->orderBy('vote_count', 'desc');
-        }])->get();
+            }])
+            ->orderBy('position')
+            ->orderBy('name')
+            ->get();
 
         $publishedJudges = Judge::where('is_published', true)
             ->with('user')

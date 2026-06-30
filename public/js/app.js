@@ -72,6 +72,7 @@
     async function apiRequest(path, options) {
         const requestOptions = options || {};
         const response = await fetch('/api/v1' + path, {
+            cache: 'no-store',
             ...requestOptions,
             headers: {
                 ...apiHeaders(requestOptions.body),
@@ -293,12 +294,13 @@
 
     async function loadCategories() {
         try {
-            const payload = await apiRequest('/public/categories?per_page=100', { method: 'GET' });
+            const payload = await apiRequest('/public/categories?per_page=100&fresh=' + Date.now(), { method: 'GET' });
             apiState.categories = payload.data || [];
             populateCategorySelects(apiState.categories);
             renderCategoryCarousel(apiState.categories);
         } catch (error) {
             populateCategorySelects([]);
+            renderCategoryCarousel([]);
         }
     }
 
@@ -317,7 +319,11 @@
                 option.textContent = category.name;
                 select.appendChild(option);
             });
-            if (current) select.value = current;
+            if (current && categories.some(function (category) { return String(category.id) === String(current); })) {
+                select.value = current;
+            } else {
+                select.value = '';
+            }
         });
     }
 
@@ -539,7 +545,12 @@
         const categorySelect = document.getElementById('votingCategory');
         const refreshBtn = document.getElementById('refreshNomineesBtn');
         if (categorySelect) categorySelect.addEventListener('change', loadNominees);
-        if (refreshBtn) refreshBtn.addEventListener('click', loadNominees);
+        if (refreshBtn) refreshBtn.addEventListener('click', refreshVotingView);
+    }
+
+    async function refreshVotingView() {
+        await loadCategories();
+        await loadNominees();
     }
 
     function bindPublicNomineeModal() {
@@ -1259,7 +1270,7 @@
         }
 
         if (sectionId === 'voting') {
-            loadNominees();
+            refreshVotingView();
         }
 
     };

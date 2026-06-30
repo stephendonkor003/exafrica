@@ -14,14 +14,17 @@ class PublicPageController extends Controller
         $section = $request->query('section', config('seo.default_section'));
         $section = array_key_exists($section, $sections) ? $section : config('seo.default_section');
 
-        return view('welcome', [
+        return response()
+            ->view('welcome', [
             'activeSection' => $section,
             'seo' => $this->seoPayload($section),
             'publicCategories' => Category::where('is_active', true)
                 ->orderBy('position')
                 ->orderBy('name')
                 ->get(['id', 'name', 'description', 'icon', 'max_nominees', 'position']),
-        ]);
+            ])
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache');
     }
 
     public function sitemap(): Response

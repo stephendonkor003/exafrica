@@ -40,6 +40,7 @@
 
     async function apiRequest(path, options) {
         const response = await fetch('/api/v1' + path, {
+            cache: 'no-store',
             headers: apiHeaders(),
             ...options,
         });

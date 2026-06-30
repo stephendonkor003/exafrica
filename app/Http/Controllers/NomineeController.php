@@ -15,6 +15,9 @@ class NomineeController extends BaseController
         $perPage = min((int) $request->input('per_page', 20), 100);
         $query = Nominee::with(['category', 'nomination:id,nominee_id,nomination_reason'])
             ->whereIn('status', self::PUBLIC_STATUSES)
+            ->whereHas('category', function ($query) {
+                $query->where('is_active', true);
+            })
             ->orderBy('vote_count', 'desc')
             ->orderBy('full_name');
 
@@ -30,7 +33,8 @@ class NomineeController extends BaseController
 
     public function publicShow(Nominee $nominee)
     {
-        if (! in_array($nominee->status, self::PUBLIC_STATUSES, true)) {
+        if (! in_array($nominee->status, self::PUBLIC_STATUSES, true)
+            || ! $nominee->category?->is_active) {
             return $this->errorResponse('You do not have permission to access this resource', null, 403);
         }
 

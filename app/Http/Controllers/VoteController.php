@@ -49,6 +49,10 @@ class VoteController extends BaseController
             return $this->errorResponse('Nominee is not approved for voting', null, 403);
         }
 
+        if (! $nominee->category?->is_active) {
+            return $this->errorResponse('This category is not open for voting', null, 403);
+        }
+
         $accountUser = $this->resolveOptionalAuthenticatedUser($request);
         $voterKey = $this->resolveVoterKey($request);
         $voter = $this->firstOrCreateVoter($voterKey);

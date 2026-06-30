@@ -763,6 +763,39 @@
 <div class="section-content" id="section-winners" style="display:none;">
     <h1 class="section-title winners-title">WINNERS</h1>
     <div class="winners-grid">
+        @if ($publicCategories->isNotEmpty())
+            @foreach ($publicCategories as $category)
+                @php
+                    $winnerImageTone = $loop->first ? 'E8A020/fff?text=WINNER' : '4A1628/F5A623?text=Winner';
+                    $winnerDescription = $category->description ?: 'Winner details for this category will be announced soon.';
+                @endphp
+                <div class="winner-card{{ $loop->first ? ' featured' : '' }}"
+                     data-modal
+                     data-modal-image="https://placehold.co/280x300/{{ $winnerImageTone }}"
+                     data-modal-tag="{{ $loop->first ? 'Featured Category' : 'Category Winner' }}"
+                     data-modal-title="{{ $category->name }}"
+                     data-modal-text="{{ $winnerDescription }}">
+                    <div class="winner-img-wrap">
+                        <img src="https://placehold.co/280x300/{{ $winnerImageTone }}" alt="{{ $category->name }}">
+                        <div class="winner-corner-tag{{ $loop->first ? ' gold-tag' : '' }}"><i class="fa {{ $loop->first ? 'fa-crown' : 'fa-trophy' }}"></i></div>
+                        @if ($loop->first)
+                            <div class="winner-featured-label">
+                                <span class="winner-label-text">WINNER</span>
+                                <p>{{ $category->name }}</p>
+                            </div>
+                        @endif
+                        <div class="winner-overlay">
+                            <p class="winner-name">{{ $category->name }}</p>
+                            <p class="winner-desc">{{ \Illuminate\Support\Str::limit($winnerDescription, 120) }}</p>
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        @else
+            <div class="empty-state">Winners will appear once categories are active.</div>
+        @endif
+
+        @if (false)
         <div class="winner-card"
              data-modal
              data-modal-image="https://placehold.co/280x300/4A1628/F5A623?text=Winner"
@@ -827,6 +860,7 @@
                 </div>
             </div>
         </div>
+        @endif
     </div>
 </div>
 

@@ -38,7 +38,7 @@ return [
         'categories' => [
             'label' => 'Categories and Descriptions',
             'title' => 'Competition Categories | Extraordinary Africans',
-            'description' => 'Explore the Extraordinary Africans competition categories connected to Agenda 2063, including trade, technology, agriculture, culture, health, education, and youth leadership.',
+            'description' => 'Explore the active Extraordinary Africans competition categories connected to Agenda 2063 and managed through the back office.',
             'priority' => '0.8',
         ],
         'nominations' => [
