@@ -100,7 +100,12 @@
         if (categoryForm) {
             categoryForm.addEventListener('submit', async function (event) {
                 event.preventDefault();
-                await saveBackOfficeCategory(categoryForm);
+                try {
+                    setMessage('Saving category...', 'info');
+                    await saveBackOfficeCategory(categoryForm);
+                } catch (error) {
+                    setMessage(formatError(error), 'error');
+                }
             });
         }
 
@@ -658,11 +663,9 @@
     }
 
     async function saveBackOfficeCategory(form) {
-        const payload = formPayload(form);
+        const payload = categoryFormPayload(form);
         const id = payload.id;
         delete payload.id;
-        payload.position = payload.position ? Number(payload.position) : 0;
-        payload.max_nominees = payload.max_nominees ? Number(payload.max_nominees) : 10;
 
         if (id) {
             await apiRequest('/categories/' + id, { method: 'PUT', body: JSON.stringify(payload) });
@@ -675,6 +678,19 @@
         form.reset();
         await loadBackOfficeCategories();
         await loadAdminDashboard();
+    }
+
+    function categoryFormPayload(form) {
+        const data = new FormData(form);
+
+        return {
+            id: String(data.get('id') || '').trim(),
+            name: String(data.get('name') || '').trim(),
+            position: Number(data.get('position') || 0),
+            max_nominees: Number(data.get('max_nominees') || 10),
+            icon: String(data.get('icon') || '').trim(),
+            description: String(data.get('description') || '').trim(),
+        };
     }
 
     async function toggleCategory(id) {

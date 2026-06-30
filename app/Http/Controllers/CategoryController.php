@@ -9,18 +9,24 @@ class CategoryController extends BaseController
 {
     public function publicIndex(Request $request)
     {
-        $perPage = min((int) $request->input('per_page', 100), 100);
+        $perPage = $this->perPage($request, 100);
 
         $categories = Category::where('is_active', true)
             ->orderBy('position')
+            ->orderBy('name')
             ->paginate($perPage);
 
         return $this->paginatedResponse($categories, 'Categories retrieved successfully');
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $categories = Category::with('createdBy')->orderBy('position')->paginate(15);
+        $perPage = $this->perPage($request, 15);
+
+        $categories = Category::with('createdBy')
+            ->orderBy('position')
+            ->orderBy('name')
+            ->paginate($perPage);
 
         return $this->paginatedResponse($categories, 'Categories retrieved successfully');
     }
@@ -73,5 +79,12 @@ class CategoryController extends BaseController
         $category->delete();
 
         return $this->successResponse(null, 'Category deleted successfully');
+    }
+
+    private function perPage(Request $request, int $default): int
+    {
+        $perPage = (int) $request->input('per_page', $default);
+
+        return max(1, min($perPage, 100));
     }
 }

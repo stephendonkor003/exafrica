@@ -43,6 +43,7 @@
         user: JSON.parse(localStorage.getItem('ea_user') || 'null'),
         categories: [],
     };
+    const categoryColorClasses = ['pink', 'teal', 'purple', 'orange', 'green', 'blue', 'maroon', 'gold', 'indigo'];
     let publicNominees = [];
     let activeVoteNominee = null;
 
@@ -295,6 +296,7 @@
             const payload = await apiRequest('/public/categories?per_page=100', { method: 'GET' });
             apiState.categories = payload.data || [];
             populateCategorySelects(apiState.categories);
+            renderCategoryCarousel(apiState.categories);
         } catch (error) {
             populateCategorySelects([]);
         }
@@ -317,6 +319,42 @@
             });
             if (current) select.value = current;
         });
+    }
+
+    function renderCategoryCarousel(categories) {
+        if (!catTrack) return;
+
+        const items = Array.isArray(categories) ? categories : [];
+
+        if (!items.length) {
+            catTrack.innerHTML = '<div class="carousel-slide active"><div class="category-card maroon category-card-empty"><div class="cat-card-inner"><div class="cat-tag">#ExtraordinaryAfricans</div><h3>No categories available</h3><p>Categories will appear here once they are active.</p></div></div></div>';
+            bindModalCards(catTrack);
+            initCarousel();
+            return;
+        }
+
+        catTrack.innerHTML = items.map(function (category, index) {
+            const colorClass = categoryColorClasses[index % categoryColorClasses.length];
+            const description = category.description || 'Category details coming soon.';
+
+            return '<div class="carousel-slide' + (index === 0 ? ' active' : '') + '">' +
+                '<div class="category-card ' + colorClass + '"' +
+                    ' data-modal' +
+                    ' data-modal-color-class="' + colorClass + '"' +
+                    ' data-modal-tag="#ExtraordinaryAfricans"' +
+                    ' data-modal-title="' + escapeHtml(category.name) + '"' +
+                    ' data-modal-text="' + escapeHtml(description) + '">' +
+                    '<div class="cat-card-inner">' +
+                        '<div class="cat-tag">#ExtraordinaryAfricans</div>' +
+                        '<h3>' + escapeHtml(category.name) + '</h3>' +
+                        '<p>' + escapeHtml(truncateText(description, 110)) + '</p>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+        }).join('');
+
+        bindModalCards(catTrack);
+        initCarousel();
     }
 
     function bindNominationForm() {
@@ -1893,7 +1931,16 @@
             if (e.key === 'Escape') closeModal();
         });
 
-        document.querySelectorAll('[data-modal]').forEach(function (card) {
+        bindModalCards(document);
+    }
+
+    function bindModalCards(scope) {
+        const root = scope || document;
+
+        root.querySelectorAll('[data-modal]').forEach(function (card) {
+            if (card.dataset.modalBound === 'true') return;
+            card.dataset.modalBound = 'true';
+
             card.addEventListener('click', function (e) {
                 /* Don't fire if user clicked a button/link inside the card */
                 if (e.target.closest('button, a, input, select, textarea')) return;
