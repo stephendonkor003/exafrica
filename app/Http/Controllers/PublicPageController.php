@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
@@ -16,6 +17,10 @@ class PublicPageController extends Controller
         return view('welcome', [
             'activeSection' => $section,
             'seo' => $this->seoPayload($section),
+            'publicCategories' => Category::where('is_active', true)
+                ->orderBy('position')
+                ->orderBy('name')
+                ->get(['id', 'name', 'description', 'icon', 'max_nominees', 'position']),
         ]);
     }
 

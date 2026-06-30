@@ -1,5 +1,11 @@
 @extends('layouts.app')
 
+@php
+    $publicCategories = collect($publicCategories ?? []);
+    $categoryColorClasses = ['pink', 'teal', 'purple', 'orange', 'green', 'blue', 'maroon', 'gold', 'indigo'];
+    $featuredCategory = $publicCategories->first();
+@endphp
+
 @section('content')
 
 <!-- ACCOUNT SECTION -->
@@ -141,6 +147,38 @@
         <button class="carousel-btn prev" id="catPrev"><i class="fa fa-chevron-left"></i></button>
         <div class="carousel-track-container">
             <div class="carousel-track" id="catTrack">
+                @if ($publicCategories->isNotEmpty())
+                    @foreach ($publicCategories as $category)
+                        @php
+                            $colorClass = $categoryColorClasses[$loop->index % count($categoryColorClasses)];
+                            $description = $category->description ?: 'Category details coming soon.';
+                        @endphp
+                        <div class="carousel-slide{{ $loop->first ? ' active' : '' }}">
+                            <div class="category-card {{ $colorClass }}"
+                                 data-modal
+                                 data-modal-color-class="{{ $colorClass }}"
+                                 data-modal-tag="#ExtraordinaryAfricans"
+                                 data-modal-title="{{ $category->name }}"
+                                 data-modal-text="{{ $description }}">
+                                <div class="cat-card-inner">
+                                    <div class="cat-tag">#ExtraordinaryAfricans</div>
+                                    <h3>{{ $category->name }}</h3>
+                                    <p>{{ \Illuminate\Support\Str::limit($description, 110) }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                @else
+                    <div class="carousel-slide active">
+                        <div class="category-card maroon category-card-empty">
+                            <div class="cat-card-inner">
+                                <div class="cat-tag">#ExtraordinaryAfricans</div>
+                                <h3>No categories available</h3>
+                                <p>Categories will appear here once they are active.</p>
+                            </div>
+                        </div>
+                    </div>
+                    @if (false)
                 <div class="carousel-slide">
                     <div class="category-card pink"
                          data-modal
@@ -267,6 +305,8 @@
                         </div>
                     </div>
                 </div>
+                    @endif
+                @endif
             </div>
         </div>
         <button class="carousel-btn next" id="catNext"><i class="fa fa-chevron-right"></i></button>
@@ -302,10 +342,10 @@
              data-modal-number="01"
              data-modal-bg="#4A1628"
              data-modal-title="Choose a Category"
-             data-modal-text="Select the category that best aligns with the nominee's work and impact from our nine competition categories. Each category reflects a key pillar of Africa's Agenda 2063 development goals.">
+             data-modal-text="Select the active category that best aligns with the nominee's work and impact. Each category reflects a key pillar of Africa's Agenda 2063 development goals.">
             <div class="step-number">01</div>
             <h3>Choose a Category</h3>
-            <p>Select the category that best aligns with the nominee's work and impact from our nine competition categories.</p>
+            <p>Select the active category that best aligns with the nominee's work and impact.</p>
         </div>
         <div class="step-card"
              data-modal
@@ -359,7 +399,10 @@
                 <div class="form-group">
                     <label>Category *</label>
                     <select name="category_id" id="nominationCategory" required>
-                        <option value="">Loading categories...</option>
+                        <option value="">{{ $publicCategories->isNotEmpty() ? 'Select a category' : 'No categories available' }}</option>
+                        @foreach ($publicCategories as $category)
+                            <option value="{{ $category->id }}">{{ $category->name }}</option>
+                        @endforeach
                     </select>
                 </div>
                 <div class="form-group">
@@ -419,7 +462,10 @@
         <div class="form-group">
             <label>Category</label>
             <select id="votingCategory">
-                <option value="">Loading categories...</option>
+                <option value="">{{ $publicCategories->isNotEmpty() ? 'Select a category' : 'No categories available' }}</option>
+                @foreach ($publicCategories as $category)
+                    <option value="{{ $category->id }}">{{ $category->name }}</option>
+                @endforeach
             </select>
         </div>
         <button type="button" class="btn-submit" id="refreshNomineesBtn">Refresh Nominees</button>
@@ -448,11 +494,11 @@
                  data-modal-bg="#4A1628"
                  data-modal-number="1"
                  data-modal-title="Call for Nominations"
-                 data-modal-text="The competition opens for nominations across all nine categories. Nominators and self-nominees can submit entries through the official portal."
+                 data-modal-text="The competition opens for nominations across all active categories. Nominators and self-nominees can submit entries through the official portal."
                  data-modal-date="January – March 2026">
                 <span class="timeline-phase">Phase 1</span>
                 <h3>Call for Nominations</h3>
-                <p>The competition opens for nominations across all nine categories. Nominators and self-nominees can submit entries through the official portal.</p>
+                <p>The competition opens for nominations across all active categories. Nominators and self-nominees can submit entries through the official portal.</p>
                 <span class="timeline-tag">January – March 2026</span>
             </div>
         </div>
@@ -543,6 +589,39 @@
 <div class="section-content" id="section-judges" style="display:none;">
     <h1 class="section-title">JUDGES</h1>
 
+    @if ($publicCategories->isNotEmpty())
+        @foreach ($publicCategories as $category)
+            @php
+                $judgeDescription = $category->description
+                    ? 'Judges for this category will review nominees connected to '.$category->description
+                    : 'Judges for this category will be announced soon.';
+            @endphp
+            <div class="judges-category">
+                <h2 class="judges-category-title">{{ $category->name }}</h2>
+                <div class="judges-grid">
+                    @for ($judgeSlot = 1; $judgeSlot <= 3; $judgeSlot++)
+                        <div class="judge-card"
+                             data-modal
+                             data-modal-image="https://placehold.co/200x220/d4a574/4A1628?text=Judge"
+                             data-modal-title="Judge to be announced"
+                             data-modal-subtitle="{{ $category->name }}"
+                             data-modal-tag="{{ $category->name }}"
+                             data-modal-text="{{ $judgeDescription }}">
+                            <div class="judge-img-wrap">
+                                <img src="https://placehold.co/200x220/d4a574/4A1628?text=Judge" alt="Judge">
+                            </div>
+                            <p class="judge-name">Judge to be announced</p>
+                            <p class="judge-title">{{ $category->name }}</p>
+                        </div>
+                    @endfor
+                </div>
+            </div>
+        @endforeach
+    @else
+        <div class="empty-state">Judge categories will appear once categories are active.</div>
+    @endif
+
+    @if (false)
     <div class="judges-category">
         <h2 class="judges-category-title">Gender and Women Empowerment</h2>
         <div class="judges-grid">
@@ -677,6 +756,7 @@
             </div>
         </div>
     </div>
+    @endif
 </div>
 
 <!-- WINNERS SECTION -->
